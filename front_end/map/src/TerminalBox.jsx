@@ -13,7 +13,6 @@ const TerminalBox = () => {
         
         const data = await res.json()
         
-        // Map real backend alerts to terminal strings
         const formattedLogs = data.map((alert) => {
           const timestamp = new Date(alert.timestamp).toLocaleTimeString('en-GB')
           return {
@@ -29,61 +28,44 @@ const TerminalBox = () => {
       }
     }
 
-    // Fetch alerts immediately on mount (no fake system messages)
     fetchAlerts()
-
-    // Poll every 5 seconds
     const interval = setInterval(fetchAlerts, 5000)
     return () => clearInterval(interval)
   }, [])
 
-  // Auto-scroll to the bottom when new logs arrive
   useEffect(() => {
     endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [logs])
 
   const getColor = (severity) => {
     switch(severity) {
-      case 'HIGH': return '#ef4444' // Red
-      case 'MEDIUM': return '#eab308' // Yellow
-      case 'LOW': return '#4af626' // Green
-      default: return '#4af626'
+      case 'HIGH': return '#ef4444' 
+      case 'MEDIUM': return '#eab308' 
+      case 'LOW': return '#10b981' 
+      default: return '#10b981'
     }
   }
 
   return (
     <div style={{
-      backgroundColor: '#121212',
-      fontFamily: 'ui-monospace, Consolas, monospace',
+      backgroundColor: '#0a0a0a',
+      fontFamily: 'var(--mono)',
       padding: '16px',
-      borderRadius: '8px',
-      height: '250px',
+      borderRadius: '6px',
+      height: '300px',
       width: '100%',
       overflowY: 'auto',
       boxSizing: 'border-box',
       textAlign: 'left',
-      border: '2px solid #2e303a',
-      boxShadow: 'inset 0 0 15px rgba(0,0,0,0.8)'
+      border: '1px solid #262626',
     }}>
-      <div style={{ 
-        marginBottom: '12px', 
-        color: '#888', 
-        borderBottom: '1px solid #333', 
-        paddingBottom: '8px',
-        fontWeight: 'bold',
-        textTransform: 'uppercase',
-        letterSpacing: '1px'
-      }}>
-        Live Alert Feed
-      </div>
-      
       {logs.length === 0 ? (
-        <div style={{ color: '#888', fontSize: '14px' }}>Waiting for alerts...</div>
+        <div style={{ color: '#525252', fontSize: '13px' }}>Awaiting system alerts...</div>
       ) : (
         logs.map((log) => (
           <div key={log.id} style={{ 
             margin: '4px 0', 
-            fontSize: '14px', 
+            fontSize: '13px', 
             lineHeight: '1.5',
             color: getColor(log.severity)
           }}>
@@ -91,7 +73,6 @@ const TerminalBox = () => {
           </div>
         ))
       )}
-      
       <div ref={endOfMessagesRef} />
     </div>
   )

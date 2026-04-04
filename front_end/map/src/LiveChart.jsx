@@ -28,7 +28,7 @@ const LiveChart = ({ farm }) => {
           activePower: reading.activePower,
           windSpeed: reading.windSpeed,
           gearboxTemp: reading.gearboxTemp
-        })).sort((a, b) => a.time - b.time) // Ensure chronological order
+        })).sort((a, b) => a.time - b.time)
 
         setData(formattedData)
       } catch (err) {
@@ -36,15 +36,11 @@ const LiveChart = ({ farm }) => {
       }
     }
 
-    // Fetch immediately on mount
     fetchReadings()
-
-    // Poll for new readings every 10 seconds
     const interval = setInterval(fetchReadings, 10000)
     return () => clearInterval(interval)
   }, [farm])
 
-  // Format the UNIX timestamp into a readable time (e.g., 14:30)
   const formatTime = (timestamp) => {
     return new Date(timestamp).toLocaleTimeString([], {
       hour: '2-digit',
@@ -53,59 +49,49 @@ const LiveChart = ({ farm }) => {
   }
 
   return (
-    <div className="chart-wrapper">
-      <h2>Live Readings: {farm.name}</h2>
-      <div style={{ width: '100%', height: 400 }}>
-        <ResponsiveContainer>
-          <LineChart
-            data={data}
-            margin={{ top: 20, right: 30, left: 10, bottom: 5 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-            
-            <XAxis
-              dataKey="time"
-              type="number"
-              domain={['dataMin', 'dataMax']}
-              tickFormatter={formatTime}
-              stroke="var(--text)"
-              tick={{ fontSize: 12 }}
-            />
-            
-            <YAxis
-              yAxisId="left"
-              stroke="var(--accent)"
-              tickFormatter={(val) => `${val} kW`}
-              tick={{ fontSize: 12 }}
-              width={80}
-            />
-            
-            <Tooltip
-              labelFormatter={formatTime}
-              formatter={(value, name) => {
-                if (name === "activePower") return [`${value.toFixed(2)} kW`, 'Active Power']
-                return [value, name]
-              }}
-              contentStyle={{
-                backgroundColor: 'var(--bg)',
-                borderColor: 'var(--border)',
-                borderRadius: '8px',
-                color: 'var(--text-h)'
-              }}
-            />
-            
-            <Line
-              yAxisId="left"
-              type="monotone"
-              dataKey="activePower"
-              stroke="var(--accent)"
-              strokeWidth={2}
-              dot={false}
-              isAnimationActive={false} 
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+    <div style={{ width: '100%', height: '400px' }}>
+      <ResponsiveContainer>
+        <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+          <XAxis
+            dataKey="time"
+            type="number"
+            domain={['dataMin', 'dataMax']}
+            tickFormatter={formatTime}
+            stroke="var(--text)"
+            tick={{ fontSize: 12 }}
+          />
+          <YAxis
+            yAxisId="left"
+            stroke="var(--accent)"
+            tickFormatter={(val) => `${val} kW`}
+            tick={{ fontSize: 12 }}
+            width={60}
+          />
+          <Tooltip
+            labelFormatter={formatTime}
+            formatter={(value, name) => {
+              if (name === "activePower") return [`${value.toFixed(2)} kW`, 'Active Power']
+              return [value, name]
+            }}
+            contentStyle={{
+              backgroundColor: 'var(--panel-bg)',
+              borderColor: 'var(--border)',
+              borderRadius: '8px',
+              color: 'var(--text-h)'
+            }}
+          />
+          <Line
+            yAxisId="left"
+            type="monotone"
+            dataKey="activePower"
+            stroke="var(--accent)"
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false} 
+          />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   )
 }

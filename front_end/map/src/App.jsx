@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import Map from './Map'
 import LiveChart from './LiveChart'
 import TerminalBox from './TerminalBox'
-import './App.css'
 import PipelineMonitor from './PipelineMonitor'
 import ReportExporter from './ReportExporter'
+import './App.css'
 
 export const API_BASE_URL = 'http://10.200.22.157:6767/api'
 
@@ -14,17 +14,14 @@ function App() {
   const [kpis, setKpis] = useState(null)
 
   useEffect(() => {
-    // 1. Fetch Dashboard KPIs
     fetch(`${API_BASE_URL}/dashboard/kpis`)
       .then((res) => res.json())
       .then((data) => setKpis(data))
       .catch((err) => console.error('Failed to fetch KPIs:', err))
 
-    // 2. Fetch Turbines for the Map
     fetch(`${API_BASE_URL}/turbines`)
       .then((res) => res.json())
       .then((data) => {
-        // Transform the backend model to the format our frontend expects
         const formattedTurbines = data.map((t) => ({
           ...t,
           id: t.turbineId,
@@ -37,29 +34,26 @@ function App() {
   }, [])
 
   return (
-    <div id="dashboard" style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      alignItems: 'center',
-      gap: '32px', 
-      padding: '40px 24px',
-      width: '100%',
-      boxSizing: 'border-box'
-    }}>
-      <h1>Wind Energy Dashboard</h1>
+    <div className="dashboard-container">
+      <header className="header-row">
+        <div>
+          <h1>Wind Energy Command Center</h1>
+          <p className="subtitle">Real-time telemetry and operational status</p>
+        </div>
+        <ReportExporter />
+      </header>
 
-      {/* KPI Cards Container */}
       {kpis && (
         <div className="kpi-grid">
           <div className="kpi-card">
             <h4>Total Output</h4>
-            <p className="kpi-value">{kpis.totalMwh} <span style={{fontSize: '14px'}}>MWh</span></p>
+            <p className="kpi-value">{kpis.totalMwh} <span style={{fontSize: '16px'}}>MWh</span></p>
           </div>
           <div className="kpi-card">
             <h4>Availability</h4>
             <p className="kpi-value">{kpis.availability}%</p>
           </div>
-          <div className="kpi-card" style={{ borderColor: kpis.activeAlerts > 0 ? '#ef4444' : 'var(--border)' }}>
+          <div className="kpi-card" style={{ borderColor: kpis.activeAlerts > 0 ? 'rgba(239, 68, 68, 0.5)' : 'var(--border)' }}>
             <h4>Active Alerts</h4>
             <p className="kpi-value" style={{ color: kpis.activeAlerts > 0 ? '#ef4444' : 'inherit' }}>
               {kpis.activeAlerts}
@@ -72,40 +66,33 @@ function App() {
         </div>
       )}
       
-      {/* Map Container */}
-      <div style={{ width: '100%', maxWidth: '800px' }}>
-        <Map farms={turbines} onSelectFarm={setSelectedFarm} />
-      </div>
-      
-      {/* Chart Container */}
-      <div style={{ width: '100%', maxWidth: '800px' }}>
-        {selectedFarm ? (
-          <LiveChart key={selectedFarm.id} farm={selectedFarm} />
-        ) : (
-          <div className="chart-wrapper" style={{ 
-            display: 'grid', 
-            placeItems: 'center', 
-            height: '400px',
-            width: '100%', 
-            boxSizing: 'border-box' 
-          }}>
-            <h3 style={{ textAlign: 'center', padding: '0 20px', color: 'var(--text)' }}>
-              Select a turbine on the map to view its live output.
-            </h3>
-          </div>
-        )}
+      <div className="main-grid">
+        <div className="panel map-panel">
+          <h2>Geospatial Overview</h2>
+          <Map farms={turbines} onSelectFarm={setSelectedFarm} />
+        </div>
+        
+        <div className="panel chart-panel">
+          <h2>Telemetry: {selectedFarm ? selectedFarm.name : 'No Selection'}</h2>
+          {selectedFarm ? (
+            <LiveChart key={selectedFarm.id} farm={selectedFarm} />
+          ) : (
+            <div className="empty-state">
+              Select a turbine on the map to view live output telemetry.
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Terminal Container */}
-      <div style={{ width: '100%', maxWidth: '800px' }}>
-        <TerminalBox />
-      </div>
-        <div style={{ width: '100%', maxWidth: '800px' }}>
-        <ReportExporter />
-      </div>
-
-      <div style={{ width: '100%', maxWidth: '800px' }}>
-        <PipelineMonitor />
+      <div className="bottom-grid">
+        <div className="panel">
+          <h2>Data Pipeline Execution</h2>
+          <PipelineMonitor />
+        </div>
+        <div className="panel terminal-panel">
+          <h2>System Alert Feed</h2>
+          <TerminalBox />
+        </div>
       </div>
     </div>
   )
