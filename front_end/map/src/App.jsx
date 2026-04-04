@@ -4,6 +4,7 @@ import LiveChart from './LiveChart'
 import TerminalBox from './TerminalBox'
 import PipelineMonitor from './PipelineMonitor'
 import ReportExporter from './ReportExporter'
+import SignInModal from './SignInModal' 
 import './App.css'
 
 export const API_BASE_URL = 'http://10.200.22.157:6767/api/v1'
@@ -13,6 +14,10 @@ function App() {
   const [selectedPark, setSelectedPark] = useState(null)
   const [parkTurbines, setParkTurbines] = useState([])
   const [parkRadius, setParkRadius] = useState(null)
+  
+  // --- Auth State ---
+  const [user, setUser] = useState(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/parks/locations`)
@@ -51,14 +56,48 @@ function App() {
     }
   }, [selectedPark])
 
+  const handleSignOut = () => {
+    setUser(null)
+  }
+
   return (
     <div className="dashboard-container">
+      <SignInModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onSignIn={setUser} 
+      />
+
       <header className="header-row">
         <div>
           <h1>Wind Energy Command Center</h1>
           <p className="subtitle">Real-time telemetry and operational status</p>
         </div>
-        <ReportExporter />
+        
+        <div className="header-actions">
+          {user ? (
+            <div className="user-badge">
+              <span>{user.username}</span>
+              <span className="user-role">{user.role}</span>
+              <button 
+                onClick={handleSignOut} 
+                style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', marginLeft: '4px' }}
+                title="Sign Out"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <button className="btn-secondary" onClick={() => setIsModalOpen(true)}>
+              Sign In
+            </button>
+          )}
+
+          <ReportExporter 
+            user={user} 
+            onRequestAuth={() => setIsModalOpen(true)} 
+          />
+        </div>
       </header>
       
       <div className="main-grid">
