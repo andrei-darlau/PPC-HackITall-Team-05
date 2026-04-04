@@ -1,19 +1,25 @@
-from src.extract import load_wtg_metadata
+from src.extract import load_wtg_metadata, load_data
+from src.transform import process_and_load
+
 
 def main():
-    print("Starting Data Pipeline ETL...")
-
     try:
         wtg_df = load_wtg_metadata()
+        print(f"[LOADED] wtg metadata: {len(wtg_df)} lines.")
 
-        print("\nConnected to S3 and loaded metadata!")
-        print("Here are the first 5 rows:")
-        print(wtg_df.head())
+        sensors_df = load_data("park")
+        print(f"[LOADED] sensor data: {len(sensors_df)} lines.")
 
-        print(f"\nColumns found: {list(wtg_df.columns)}")
+        meteo_df = load_data("meteo")
+        print(f"[LOADED] meteo data: {len(meteo_df)} lines.")
+
+        final_df = process_and_load(df_sensors=sensors_df, df_meteo=meteo_df, df_wtg=wtg_df)
+
+        print("\n[DONE]")
+        print(f"Total lines: {len(final_df)}")
 
     except Exception as e:
-        print(f"\nError connecting or reading data: {e}")
+        print(f"\n[ERROR]: {e}")
 
 
 if __name__ == "__main__":
