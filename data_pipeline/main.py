@@ -4,9 +4,11 @@ from src.transform import process_and_load
 
 def main():
     try:
+        # static turbine data
         wtg_df = load_wtg_metadata()
         print(f"[LOADED] wtg metadata: {len(wtg_df)} lines.")
 
+		# sensor readings
         sensors_df = load_data("park")
         print(f"[LOADED] sensor data: {len(sensors_df)} lines.")
 
