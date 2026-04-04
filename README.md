@@ -125,3 +125,4 @@ Have fun developing your solution and good luck!
 
 ## Nu uitați să urcați codul în github la fiecare 6 ore
 
+![Team Hyped Coders](./images/irl.jfif)
