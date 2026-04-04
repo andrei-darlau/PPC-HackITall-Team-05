@@ -2,13 +2,14 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 
 const Map = ({ farms, onSelectFarm }) => {
-  const centerPosition = [44.43, 26.09]
+  // Centered roughly on Romania to match the backend coordinates
+  const centerPosition = [45.0, 25.0] 
 
   return (
     <div style={{ height: '400px', width: '100%', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border)' }}>
       <MapContainer 
         center={centerPosition} 
-        zoom={9} 
+        zoom={6} 
         scrollWheelZoom={true}
         style={{ height: '100%', width: '100%', zIndex: 0 }}
       >
@@ -27,10 +28,8 @@ const Map = ({ farms, onSelectFarm }) => {
           >
             <Popup>
               <strong>{farm.name}</strong><br/>
-              Status: <span style={{ color: farm.status === 'ONLINE' ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>
-                {farm.status}
-              </span><br/>
-              Park ID: {farm.parkId}
+              Average Lat: {farm.averageLat.toFixed(4)}<br/>
+              Average Long: {farm.averageLong.toFixed(4)}
             </Popup>
           </Marker>
         ))}

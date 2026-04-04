@@ -8,43 +8,41 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import { API_BASE_URL } from './App'
 
-const LiveChart = ({ farm }) => {
+// Now takes in the specific park, and the live readings array passed from App.jsx
+const LiveChart = ({ park, liveReadings }) => {
   const [data, setData] = useState([])
 
   useEffect(() => {
-    if (!farm) return
+    if (!park || !liveReadings || liveReadings.length === 0) return
 
-    const fetchReadings = async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/turbines/${farm.turbineId}/readings`)
-        if (!res.ok) throw new Error('Network response was not ok')
-        
-        const rawData = await res.json()
-        
-        const formattedData = rawData.map(reading => ({
-          time: new Date(reading.timestamp).getTime(),
-          activePower: reading.activePower,
-          windSpeed: reading.windSpeed,
-          gearboxTemp: reading.gearboxTemp
-        })).sort((a, b) => a.time - b.time)
-
-        setData(formattedData)
-      } catch (err) {
-        console.error('Failed to fetch turbine readings:', err)
-      }
+    // Filter to find the turbines that belong to the selected park
+    const parkTurbines = liveReadings.filter(r => r.parkId === park.id)
+    
+    // Sum up the active power of all turbines in this park
+    const totalActivePower = parkTurbines.reduce((sum, t) => sum + t.activePower, 0)
+    
+    // Create a new data point based on the current time
+    const newPoint = {
+      time: new Date().getTime(), 
+      activePower: totalActivePower,
     }
 
-    fetchReadings()
-    const interval = setInterval(fetchReadings, 10000)
-    return () => clearInterval(interval)
-  }, [farm])
+    // Append to chart data, keeping only the last 15 points to create a rolling chart
+    setData(prevData => {
+      const updatedData = [...prevData, newPoint]
+      if (updatedData.length > 15) {
+        return updatedData.slice(updatedData.length - 15)
+      }
+      return updatedData
+    })
+  }, [park, liveReadings])
 
   const formatTime = (timestamp) => {
     return new Date(timestamp).toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
+      second: '2-digit'
     })
   }
 
@@ -66,12 +64,12 @@ const LiveChart = ({ farm }) => {
             stroke="var(--accent)"
             tickFormatter={(val) => `${val} kW`}
             tick={{ fontSize: 12 }}
-            width={60}
+            width={80}
           />
           <Tooltip
             labelFormatter={formatTime}
             formatter={(value, name) => {
-              if (name === "activePower") return [`${value.toFixed(2)} kW`, 'Active Power']
+              if (name === "activePower") return [`${value.toFixed(2)} kW`, 'Total Active Power']
               return [value, name]
             }}
             contentStyle={{
