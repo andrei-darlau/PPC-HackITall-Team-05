@@ -4,7 +4,12 @@ Datele sunt disponibile într-un bucket de S3: s3://ppcro-rr-noprod-app00176-dev
 În cadrul acestei căi există mai multe foldere:
 - hackathon_meteo_data
 - hackathon_park_data
-- hackathon_wtg_data.
+- hackathon_wtg_data
+
+Conectare la S3:
+- aws_access_key_id = "AKIATCKATFIM6BVTEXPZ"
+- aws_secret_access_key = "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"
+- region = "eu-central-1"
 
 ## hackathon_meteo_data
 
