@@ -2,8 +2,10 @@ package eu.urzicroft.turbine.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 @Data
+@EqualsAndHashCode
 @Entity
 @Table(name = "turbine_metadata")
 public class Turbine {

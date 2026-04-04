@@ -1,17 +1,18 @@
 package eu.urzicroft.turbine.service;
 
-import eu.urzicroft.turbine.dto.KpiResponseDTO;
-import eu.urzicroft.turbine.model.Turbine;
+import eu.urzicroft.turbine.dto.TurbineGraphPointDTO;
+import eu.urzicroft.turbine.dto.TurbineHistoryProjection;
+import eu.urzicroft.turbine.model.SensorData;
 import eu.urzicroft.turbine.repository.SensorDataRepository;
 import eu.urzicroft.turbine.repository.TurbineRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CachePut;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -20,35 +21,37 @@ public class KpiService {
     private final TurbineRepository turbineRepository;
     private final SensorDataRepository sensorDataRepository;
 
-    @Cacheable("kpis")
-    public List<KpiResponseDTO> getLatestKpis() {
-        return calculateKpis();
+    public List<TurbineGraphPointDTO> getTurbineHistory(
+            String turbineId,
+            LocalDateTime start,
+            LocalDateTime end) {
+        return sensorDataRepository.getAggregatedHistoryForTurbine(turbineId, start, end)
+                .stream()
+                .map(proj -> TurbineGraphPointDTO.builder()
+                        .timeBucket(proj.getTimeBucket())
+                        .activePower("act_pwt".equals(proj.getSensorType()) ? proj.getAverageValue() : null)
+                        .windSpeed("wd_spd".equals(proj.getSensorType()) ? proj.getAverageValue() : null)
+                        .ambientTemp("turbine_t".equals(proj.getSensorType()) ? proj.getAverageValue() : null)
+                        .build())
+                .toList();
     }
 
-    @CachePut("kpis")
-    public List<KpiResponseDTO> refreshKpis() {
-        return calculateKpis();
+    public Map<LocalDateTime, Double> getGlobalPublicHistory(LocalDateTime start, LocalDateTime end) {
+        return sensorDataRepository.getGlobalActivePowerHistory(start, end)
+                .stream()
+                .collect(Collectors.toMap(
+                        TurbineHistoryProjection::getTimeBucket,
+                        TurbineHistoryProjection::getAverageValue,
+                        (existing, replacement) -> existing,
+                        TreeMap::new
+                ));
     }
 
-    private List<KpiResponseDTO> calculateKpis() {
-        List<KpiResponseDTO> kpis = new ArrayList<>();
-        List<Turbine> turbines = turbineRepository.findAll();
-        LocalDateTime fifteenMinsAgo = LocalDateTime.now().minusMinutes(15);
-
-        for (Turbine t : turbines) {
-            Double avgPower = sensorDataRepository.getAverageValueSince(t.getId(), "act_pwt", fifteenMinsAgo);
-            Double avgTemp = sensorDataRepository.getAverageValueSince(t.getId(), "turbine_t", fifteenMinsAgo);
-            Double avgWind = sensorDataRepository.getAverageValueSince(t.getId(), "wd_spd", fifteenMinsAgo);
-
-            kpis.add(KpiResponseDTO.builder()
-                    .turbineId(t.getId())
-                    .parkId(t.getParkId())
-                    .timestamp(LocalDateTime.now())
-                    .activePower(avgPower != null ? avgPower : 0.0)
-                    .ambientTemp(avgTemp != null ? avgTemp : 0.0)
-                    .windSpeed(avgWind != null ? avgWind : 0.0)
-                    .build());
-        }
-        return kpis;
+    private Double calculateAverageForType(List<SensorData> sensors, String type) {
+        return sensors.stream()
+                .filter(s -> type.equals(s.getSensorType()) && s.getCurrentValue() != null)
+                .mapToDouble(SensorData::getCurrentValue)
+                .average()
+                .orElse(Double.NaN);
     }
 }
