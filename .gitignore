@@ -1,0 +1,79 @@
+backend_api/HELP.md
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+# Ignore build artifacts inside backend_api
+backend_api/.gradle/
+backend_api/build/
+backend_api/**/build/
+
+# Allow Gradle wrapper JAR
+!backend_api/gradle/wrapper/gradle-wrapper.jar
+
+# Ignore STS files
+backend_api/.apt_generated
+backend_api/.classpath
+backend_api/.factorypath
+backend_api/.project
+backend_api/.settings
+backend_api/.springBeans
+backend_api/.sts4-cache
+backend_api/bin/
+backend_api/**/bin/
+
+# IntelliJ IDEA
+backend_api/.idea
+backend_api/*.iws
+backend_api/*.iml
+backend_api/*.ipr
+backend_api/out/
+backend_api/**/out/
+
+# NetBeans
+backend_api/nbproject/private/
+backend_api/nbbuild/
+backend_api/dist/
+backend_api/nbdist/
+backend_api/.nb-gradle/
+
+# VS Code
+backend_api/.vscode/
+
+# Other editor / OS junk
+backend_api/*~
+backend_api/.DS_Store
+backend_api/.fleet/
