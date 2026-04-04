@@ -1,52 +1,53 @@
-import concurrent.futures
-import awswrangler as wr
 import pandas as pd
-from src.config import S3_BASE_PATH, boto3_session
+import numpy as np
+import awswrangler as wr
+from sqlalchemy import create_engine, text
+from src.config import S3_BASE_PATH, boto3_session, DB_URL
+import concurrent.futures
 
+# 1. Initialize Engine
+engine = create_engine(DB_URL)
 
-def _read_and_sanitize_parquet(file_path):
-    df = wr.s3.read_parquet(path=file_path, boto3_session=boto3_session)
+def get_last_timestamp(table_name):
+    """Checks DB for the latest record to avoid duplicates."""
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(f"SELECT MAX(timestamp) FROM {table_name}"))
+            val = result.scalar()
+            return pd.to_datetime(val).tz_localize(None) if val else None
+    except Exception:
+        return None
 
-    time_columns = ['datetime_current_value', 'data_timestamp', 'etl_ts']
-
-    for col in time_columns:
-        if col in df.columns:
-            df[col] = pd.to_datetime(df[col], utc=True)
-            df[col] = df[col].dt.tz_localize(None)
-
-    return df
-
-
-def load_wtg_metadata() -> pd.DataFrame:
-    """Loads and cleans the static turbine metadata."""
+def load_wtg_metadata():
+    """Loads static metadata."""
     path = f"{S3_BASE_PATH}/hackathon_wtg_data/"
-    print(f"Reading WTG metadata with awswrangler from {path}...")
-    
-    # Load the data
     df = wr.s3.read_parquet(path=path, dataset=True, boto3_session=boto3_session)
-    
-    # 1. Rename the foreign key columns
     df = df.rename(columns={
-        'fk_wtg_model_id': 'wtg_model_id',
-        'fk_park_id': 'park_id',
+        'fk_wtg_model_id': 'wtg_model_id', 
+        'fk_park_id': 'park_id', 
         'fk_turbine_id': 'turbine_id'
     })
-    
-    # 2. Drop the primary key column
-    # Use errors='ignore' just in case the column is already missing
-    df = df.drop(columns=['pk_wtg_id'], errors='ignore')
-    
-    return df
+    return df.drop(columns=['pk_wtg_id'], errors='ignore')
 
-def load_data(data_type: str) -> pd.DataFrame:
+def load_data(data_type: str):
+    """Reads all files in folder but filters out rows already in DB."""
     path = f"{S3_BASE_PATH}/hackathon_{data_type}_data/"
-    print(f"Reading Sensor data from {path}")
+    table_name = 'sensor_readings' if data_type == 'park' else 'meteo_readings'
+    
+    # Get bookmark from DB
+    last_ts = get_last_timestamp(table_name)
+    
+    print(f"Reading {data_type} files from S3...")
+    # dataset=True handles multiple files in the folder automatically
+    df = wr.s3.read_parquet(path=path, dataset=True, boto3_session=boto3_session)
+    
+    ts_col = 'datetime_current_value' if data_type == 'park' else 'data_timestamp'
+    
+    # Force timezone-naive for comparison
+    df[ts_col] = pd.to_datetime(df[ts_col], unit='ms', utc=True).dt.tz_localize(None)
 
-    files = wr.s3.list_objects(path, suffix=".parquet", boto3_session=boto3_session)
-    # limit for testing
-    files = files[:10]
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-        dfs = list(executor.map(_read_and_sanitize_parquet, files))
-
-    return pd.concat(dfs, ignore_index=True)
+    if last_ts:
+        df = df[df[ts_col] > last_ts]
+    
+    print(f"[{data_type.upper()}] Found {len(df)} new rows.")
+    return df
