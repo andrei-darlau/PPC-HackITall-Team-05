@@ -12,10 +12,10 @@ public class Turbine {
     private String id;
 
     @Column(name = "wtg_model_id")
-    private String fkWtgModelId;
+    private String wtgModelId;
 
     @Column(name = "park_id")
-    private String fkParkId;
+    private String parkId;
 
     @Column(name = "lat_y")
     private double latY;

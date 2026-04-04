@@ -42,7 +42,7 @@ public class KpiService {
 
             kpis.add(KpiResponseDTO.builder()
                     .turbineId(t.getId())
-                    .parkId(t.getFkParkId())
+                    .parkId(t.getParkId())
                     .timestamp(LocalDateTime.now())
                     .activePower(avgPower != null ? avgPower : 0.0)
                     .ambientTemp(avgTemp != null ? avgTemp : 0.0)

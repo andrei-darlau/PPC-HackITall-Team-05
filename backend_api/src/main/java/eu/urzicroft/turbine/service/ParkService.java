@@ -1,6 +1,7 @@
 package eu.urzicroft.turbine.service;
 
 import eu.urzicroft.turbine.dto.ParkLocationDTO;
+import eu.urzicroft.turbine.model.Turbine;
 import eu.urzicroft.turbine.repository.TurbineRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
@@ -17,5 +18,13 @@ public class ParkService {
     @Cacheable("parkLocations")
     public List<ParkLocationDTO> getParkLocations() {
         return turbineRepository.getAverageParkLocations();
+    }
+
+    public List<String> getAllParkIds() {
+        return turbineRepository.getAllParkIds();
+    }
+
+    public List<Turbine> getTurbinesByParkId(String parkId) {
+        return turbineRepository.findByParkId(parkId);
     }
 }
