@@ -9,34 +9,11 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 
-// Now takes in the specific park, and the live readings array passed from App.jsx
-const LiveChart = ({ park, liveReadings }) => {
+const LiveChart = ({ park }) => {
   const [data, setData] = useState([])
 
-  useEffect(() => {
-    if (!park || !liveReadings || liveReadings.length === 0) return
-
-    // Filter to find the turbines that belong to the selected park
-    const parkTurbines = liveReadings.filter(r => r.parkId === park.id)
-    
-    // Sum up the active power of all turbines in this park
-    const totalActivePower = parkTurbines.reduce((sum, t) => sum + t.activePower, 0)
-    
-    // Create a new data point based on the current time
-    const newPoint = {
-      time: new Date().getTime(), 
-      activePower: totalActivePower,
-    }
-
-    // Append to chart data, keeping only the last 15 points to create a rolling chart
-    setData(prevData => {
-      const updatedData = [...prevData, newPoint]
-      if (updatedData.length > 15) {
-        return updatedData.slice(updatedData.length - 15)
-      }
-      return updatedData
-    })
-  }, [park, liveReadings])
+  // NOTE: Logic for updating chart data based on liveReadings has been removed.
+  // This component is ready for a new data ingestion method.
 
   const formatTime = (timestamp) => {
     return new Date(timestamp).toLocaleTimeString([], {
@@ -47,7 +24,7 @@ const LiveChart = ({ park, liveReadings }) => {
   }
 
   return (
-    <div style={{ width: '100%', height: '400px' }}>
+    <div style={{ width: '100%', height: '400px', position: 'relative' }}>
       <ResponsiveContainer>
         <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
@@ -68,10 +45,6 @@ const LiveChart = ({ park, liveReadings }) => {
           />
           <Tooltip
             labelFormatter={formatTime}
-            formatter={(value, name) => {
-              if (name === "activePower") return [`${value.toFixed(2)} kW`, 'Total Active Power']
-              return [value, name]
-            }}
             contentStyle={{
               backgroundColor: 'var(--panel-bg)',
               borderColor: 'var(--border)',
