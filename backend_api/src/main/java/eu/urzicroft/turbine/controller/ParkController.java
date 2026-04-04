@@ -32,4 +32,9 @@ public class ParkController {
     public List<Turbine> getTurbinesByParkId(@PathVariable String parkId) {
         return parkService.getTurbinesByParkId(parkId);
     }
+
+    @GetMapping("/{parkId}/radius")
+    public Double getParkRadius(@PathVariable String parkId) {
+        return parkService.getParkRadius(parkId);
+    }
 }
