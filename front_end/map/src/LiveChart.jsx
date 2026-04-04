@@ -8,43 +8,41 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
+import { API_BASE_URL } from './App'
 
-const LiveChart = () => {
+const LiveChart = ({ farm }) => {
   const [data, setData] = useState([])
 
   useEffect(() => {
-    // 1. Generate initial mock data (Last 60 minutes)
-    const now = Date.now()
-    const initialData = []
-    for (let i = 60; i >= 0; i--) {
-      initialData.push({
-        time: now - i * 60 * 1000, // 1 point per minute
-        value: Math.random() * 0.8, // Normal values between 0 - 0.8 MWh
-      })
+    if (!farm) return
+
+    const fetchReadings = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/turbines/${farm.turbineId}/readings`)
+        if (!res.ok) throw new Error('Network response was not ok')
+        
+        const rawData = await res.json()
+        
+        const formattedData = rawData.map(reading => ({
+          time: new Date(reading.timestamp).getTime(),
+          activePower: reading.activePower,
+          windSpeed: reading.windSpeed,
+          gearboxTemp: reading.gearboxTemp
+        })).sort((a, b) => a.time - b.time) // Ensure chronological order
+
+        setData(formattedData)
+      } catch (err) {
+        console.error('Failed to fetch turbine readings:', err)
+      }
     }
-    setData(initialData)
 
-    // 2. Simulate a live back-end feed updating every 3 seconds
-    const interval = setInterval(() => {
-      setData((currentData) => {
-        const newTime = Date.now()
-        
-        // Let's create an occasional large spike to test the auto-expanding Y-Axis
-        const isSpike = Math.random() > 0.95 
-        const newValue = isSpike ? Math.random() * 4 + 1 : Math.random() * 0.8
+    // Fetch immediately on mount
+    fetchReadings()
 
-        const newDataPoint = { time: newTime, value: newValue }
-
-        // Filter out data older than 1 hour (60 mins * 60 secs * 1000 ms)
-        const oneHourAgo = newTime - 60 * 60 * 1000
-        
-        return [...currentData, newDataPoint].filter((d) => d.time >= oneHourAgo)
-      })
-    }, 3000)
-
-    // Cleanup interval on unmount
+    // Poll for new readings every 10 seconds
+    const interval = setInterval(fetchReadings, 10000)
     return () => clearInterval(interval)
-  }, [])
+  }, [farm])
 
   // Format the UNIX timestamp into a readable time (e.g., 14:30)
   const formatTime = (timestamp) => {
@@ -56,7 +54,7 @@ const LiveChart = () => {
 
   return (
     <div className="chart-wrapper">
-      <h2>Live Energy Output</h2>
+      <h2>Live Readings: {farm.name}</h2>
       <div style={{ width: '100%', height: 400 }}>
         <ResponsiveContainer>
           <LineChart
@@ -65,7 +63,6 @@ const LiveChart = () => {
           >
             <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
             
-            {/* X-Axis: Time over 1 Hour */}
             <XAxis
               dataKey="time"
               type="number"
@@ -75,18 +72,20 @@ const LiveChart = () => {
               tick={{ fontSize: 12 }}
             />
             
-            {/* Y-Axis: Minimum range 0-1, but scales up if dataMax > 1 */}
             <YAxis
-              domain={[0, (dataMax) => Math.max(1, Math.ceil(dataMax))]}
-              stroke="var(--text)"
-              tickFormatter={(val) => `${val} MWh`}
+              yAxisId="left"
+              stroke="var(--accent)"
+              tickFormatter={(val) => `${val} kW`}
               tick={{ fontSize: 12 }}
               width={80}
             />
             
             <Tooltip
               labelFormatter={formatTime}
-              formatter={(value) => [`${value.toFixed(2)} MWh`, 'Energy']}
+              formatter={(value, name) => {
+                if (name === "activePower") return [`${value.toFixed(2)} kW`, 'Active Power']
+                return [value, name]
+              }}
               contentStyle={{
                 backgroundColor: 'var(--bg)',
                 borderColor: 'var(--border)',
@@ -96,12 +95,13 @@ const LiveChart = () => {
             />
             
             <Line
+              yAxisId="left"
               type="monotone"
-              dataKey="value"
+              dataKey="activePower"
               stroke="var(--accent)"
               strokeWidth={2}
               dot={false}
-              isAnimationActive={false} // Disabled animation so real-time updates don't stutter
+              isAnimationActive={false} 
             />
           </LineChart>
         </ResponsiveContainer>

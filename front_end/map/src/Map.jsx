@@ -27,7 +27,13 @@ const Map = ({ farms, onSelectFarm }) => {
               click: () => onSelectFarm(farm),
             }}
           >
-            <Popup>{farm.name}</Popup>
+            <Popup>
+              <strong>{farm.name}</strong><br/>
+              Status: <span style={{ color: farm.status === 'ONLINE' ? 'green' : 'red' }}>
+                {farm.status}
+              </span><br/>
+              Park ID: {farm.parkId}
+            </Popup>
           </Marker>
         ))}
       </MapContainer>

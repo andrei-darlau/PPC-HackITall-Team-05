@@ -1,46 +1,59 @@
 import { useState, useEffect, useRef } from 'react'
-
-// A list of fake backend messages to randomly pick from
-const fakeMessages = [
-  "[SYSTEM] Connecting to WebSocket stream...",
-  "[OK] Handshake successful. Latency: 12ms",
-  "[DATA] Fetching live metrics from Bucharest North Farm...",
-  "[DATA] Fetching live metrics from Ilfov East Turbines...",
-  "[DATA] Fetching live metrics from Danube Breeze Array...",
-  "[SYNC] Data payload received (24 bytes)",
-  "[SYNC] Data payload received (128 bytes)",
-  "[OK] Connection heartbeat OK",
-  "[WARN] Slight jitter detected on network, compensating...",
-  "[SYSTEM] Parsing telemetry data..."
-]
+import { API_BASE_URL } from './App'
 
 const TerminalBox = () => {
-  const [logs, setLogs] = useState(["[SYSTEM] Initializing wind farm backend connection..."])
+  const [logs, setLogs] = useState([])
   const endOfMessagesRef = useRef(null)
 
   useEffect(() => {
-    // Generate a random message every 2 seconds
-    const interval = setInterval(() => {
-      const randomMsg = fakeMessages[Math.floor(Math.random() * fakeMessages.length)]
-      
-      // Get a timestamp like "14:30:15"
-      const timestamp = new Date().toLocaleTimeString('en-GB')
-      
-      setLogs((prevLogs) => {
-        const newLogs = [...prevLogs, `[${timestamp}] ${randomMsg}`]
-        // Only keep the last 50 messages so the browser doesn't slow down
-        return newLogs.slice(-50)
-      })
-    }, 2000)
+    const fetchAlerts = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/alerts`)
+        if (!res.ok) return
+        
+        const data = await res.json()
+        
+        // Map real backend alerts to terminal strings
+        const formattedLogs = data.map((alert) => {
+          const timestamp = new Date(alert.timestamp).toLocaleTimeString('en-GB')
+          return {
+            id: `${alert.turbineId}-${alert.timestamp}`,
+            text: `[${timestamp}] [${alert.severity}] ${alert.turbineId}: ${alert.message}`,
+            severity: alert.severity
+          }
+        })
+        
+        setLogs(formattedLogs)
+      } catch (err) {
+        console.error("Failed to fetch alerts:", err)
+      }
+    }
 
-    // Cleanup interval when component unmounts
+    // Fetch alerts immediately on mount (no fake system messages)
+    fetchAlerts()
+
+    // Poll every 5 seconds
+    const interval = setInterval(fetchAlerts, 5000)
     return () => clearInterval(interval)
   }, [])
+
+  // Auto-scroll to the bottom when new logs arrive
+  useEffect(() => {
+    endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [logs])
+
+  const getColor = (severity) => {
+    switch(severity) {
+      case 'HIGH': return '#ef4444' // Red
+      case 'MEDIUM': return '#eab308' // Yellow
+      case 'LOW': return '#4af626' // Green
+      default: return '#4af626'
+    }
+  }
 
   return (
     <div style={{
       backgroundColor: '#121212',
-      color: '#4af626', // Hacker terminal green
       fontFamily: 'ui-monospace, Consolas, monospace',
       padding: '16px',
       borderRadius: '8px',
@@ -57,19 +70,28 @@ const TerminalBox = () => {
         color: '#888', 
         borderBottom: '1px solid #333', 
         paddingBottom: '8px',
-        fontWeight: 'bold'
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        letterSpacing: '1px'
       }}>
-        root@wind-farm-backend:~# ./tail-logs.sh
+        Live Alert Feed
       </div>
       
-      {/* Map through all the logs and display them */}
-      {logs.map((log, index) => (
-        <div key={index} style={{ margin: '4px 0', fontSize: '14px', lineHeight: '1.5' }}>
-          {log}
-        </div>
-      ))}
+      {logs.length === 0 ? (
+        <div style={{ color: '#888', fontSize: '14px' }}>Waiting for alerts...</div>
+      ) : (
+        logs.map((log) => (
+          <div key={log.id} style={{ 
+            margin: '4px 0', 
+            fontSize: '14px', 
+            lineHeight: '1.5',
+            color: getColor(log.severity)
+          }}>
+            {log.text}
+          </div>
+        ))
+      )}
       
-      {/* This invisible div helps us auto-scroll to the bottom */}
       <div ref={endOfMessagesRef} />
     </div>
   )
