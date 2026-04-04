@@ -4,81 +4,139 @@ import LiveChart from './LiveChart'
 import TerminalBox from './TerminalBox'
 import PipelineMonitor from './PipelineMonitor'
 import ReportExporter from './ReportExporter'
+import SignInModal from './SignInModal' 
 import './App.css'
 
-export const API_BASE_URL = 'http://10.200.22.157:6767/api'
+export const API_BASE_URL = 'http://10.200.22.157:6767/api/v1'
 
 function App() {
-  const [turbines, setTurbines] = useState([])
-  const [selectedFarm, setSelectedFarm] = useState(null)
-  const [kpis, setKpis] = useState(null)
+  const [parks, setParks] = useState([])
+  const [selectedPark, setSelectedPark] = useState(null)
+  const [parkTurbines, setParkTurbines] = useState([])
+  const [parkRadius, setParkRadius] = useState(null)
+  
+  // --- Auth State ---
+  const [user, setUser] = useState(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/dashboard/kpis`)
-      .then((res) => res.json())
-      .then((data) => setKpis(data))
-      .catch((err) => console.error('Failed to fetch KPIs:', err))
-
-    fetch(`${API_BASE_URL}/turbines`)
+    fetch(`${API_BASE_URL}/parks/locations`)
       .then((res) => res.json())
       .then((data) => {
-        const formattedTurbines = data.map((t) => ({
-          ...t,
-          id: t.turbineId,
-          name: `${t.turbineId} (${t.model})`,
-          position: [t.latitude, t.longitude],
+        const formattedParks = data.map((p) => ({
+          ...p,
+          id: p.parkId,
+          name: p.parkId,
+          position: [p.averageLat, p.averageLong], 
         }))
-        setTurbines(formattedTurbines)
+        setParks(formattedParks)
       })
-      .catch((err) => console.error('Failed to fetch turbines:', err))
+      .catch((err) => console.error('Failed to fetch parks:', err))
   }, [])
+
+  useEffect(() => {
+    if (selectedPark) {
+      // Fetch Turbines
+      fetch(`${API_BASE_URL}/parks/${selectedPark.id}/turbines`)
+        .then((res) => res.json())
+        .then((data) => setParkTurbines(data))
+        .catch((err) => console.error('Failed to fetch turbines:', err))
+
+      // Fetch Radius (returns a float in km)
+      fetch(`${API_BASE_URL}/parks/${selectedPark.id}/radius`)
+        .then((res) => res.json())
+        .then((data) => setParkRadius(data))
+        .catch((err) => {
+          console.error('Failed to fetch radius:', err)
+          setParkRadius(null)
+        })
+    } else {
+      setParkTurbines([])
+      setParkRadius(null)
+    }
+  }, [selectedPark])
+
+  const handleSignOut = () => {
+    setUser(null)
+  }
 
   return (
     <div className="dashboard-container">
+      <SignInModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onSignIn={setUser} 
+      />
+
       <header className="header-row">
         <div>
           <h1>Wind Energy Command Center</h1>
           <p className="subtitle">Real-time telemetry and operational status</p>
         </div>
-        <ReportExporter />
-      </header>
+        
+        <div className="header-actions">
+          {user ? (
+            <div className="user-badge">
+              <span>{user.username}</span>
+              <span className="user-role">{user.role}</span>
+              <button 
+                onClick={handleSignOut} 
+                style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', marginLeft: '4px' }}
+                title="Sign Out"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <button className="btn-secondary" onClick={() => setIsModalOpen(true)}>
+              Sign In
+            </button>
+          )}
 
-      {kpis && (
-        <div className="kpi-grid">
-          <div className="kpi-card">
-            <h4>Total Output</h4>
-            <p className="kpi-value">{kpis.totalMwh} <span style={{fontSize: '16px'}}>MWh</span></p>
-          </div>
-          <div className="kpi-card">
-            <h4>Availability</h4>
-            <p className="kpi-value">{kpis.availability}%</p>
-          </div>
-          <div className="kpi-card" style={{ borderColor: kpis.activeAlerts > 0 ? 'rgba(239, 68, 68, 0.5)' : 'var(--border)' }}>
-            <h4>Active Alerts</h4>
-            <p className="kpi-value" style={{ color: kpis.activeAlerts > 0 ? '#ef4444' : 'inherit' }}>
-              {kpis.activeAlerts}
-            </p>
-          </div>
-          <div className="kpi-card">
-            <h4>Offline Turbines</h4>
-            <p className="kpi-value">{kpis.offlineTurbines}</p>
-          </div>
+          <ReportExporter 
+            user={user} 
+            onRequestAuth={() => setIsModalOpen(true)} 
+          />
         </div>
-      )}
+      </header>
       
       <div className="main-grid">
         <div className="panel map-panel">
           <h2>Geospatial Overview</h2>
-          <Map farms={turbines} onSelectFarm={setSelectedFarm} />
+          <Map 
+            farms={parks} 
+            onSelectFarm={setSelectedPark} 
+            selectedPark={selectedPark} 
+            radius={parkRadius} 
+            turbines={parkTurbines} 
+          />
+        </div>
+
+        <div className="panel turbine-panel">
+          <h2>{selectedPark ? `${selectedPark.name} Turbines` : 'Park Details'}</h2>
+          {selectedPark ? (
+            <div className="turbine-list">
+              {parkTurbines.map((turbine) => (
+                <div key={turbine.id} className="turbine-list-item">
+                  <strong>{turbine.id}</strong>
+                  <span className="turbine-model">Model: {turbine.wtgModelId}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+             <div className="empty-state" style={{ height: '400px' }}>
+                Select a park to view its turbines.
+             </div>
+          )}
         </div>
         
         <div className="panel chart-panel">
-          <h2>Telemetry: {selectedFarm ? selectedFarm.name : 'No Selection'}</h2>
-          {selectedFarm ? (
-            <LiveChart key={selectedFarm.id} farm={selectedFarm} />
+          <h2>Telemetry: {selectedPark ? selectedPark.name : 'No Selection'}</h2>
+          {selectedPark ? (
+            <LiveChart key={selectedPark.id} park={selectedPark} />
           ) : (
-            <div className="empty-state">
-              Select a turbine on the map to view live output telemetry.
+            <div className="empty-state" style={{ height: '400px' }}>
+              Select a park on the map to view live output telemetry.
             </div>
           )}
         </div>

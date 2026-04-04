@@ -50,7 +50,7 @@ public class ReportService {
                 // write the row
                 writer.printf("%s,%s,%s,%.2f%n",
                         startOfYesterday.toLocalDate().toString(),
-                        t.getFkParkId(),
+                        t.getParkId(),
                         t.getId(),
                         powerVal
                 );
