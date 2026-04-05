@@ -41,7 +41,10 @@ const ParkDashboard = ({ selectedPark, selectedTurbine }) => {
   const fetchParkData = useCallback(async (startIso, endIso, isDelta = false) => {
     if (!selectedPark && !selectedTurbine) return
 
-    if (!isDelta) setIsLoading(true)
+    if (!isDelta) {
+      setIsLoading(true)
+      setData([])
+    }
     setError(null)
 
     try {

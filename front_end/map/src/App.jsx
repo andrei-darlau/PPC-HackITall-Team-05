@@ -289,7 +289,6 @@ function App() {
               </div>
               
               <ParkDashboard 
-                key={selectedTurbine ? selectedTurbine.id : selectedPark.id}
                 selectedPark={selectedPark} 
                 selectedTurbine={selectedTurbine} 
               />
