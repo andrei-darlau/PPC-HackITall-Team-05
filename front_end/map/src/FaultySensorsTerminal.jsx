@@ -8,7 +8,7 @@ const FaultySensorsTerminal = ({ user, parks }) => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  // Auto-select the first park if the user only has access to one (e.g., Tenants)
+  // Auto-select the first park if the user only has access to one
   useEffect(() => {
     if (parks.length === 1 && !selectedParkId) {
       setSelectedParkId(parks[0].id)
@@ -56,13 +56,16 @@ const FaultySensorsTerminal = ({ user, parks }) => {
           // Format the timestamp for cleaner reading
           const timeFormatted = fault.latestRejectedAt.replace('T', ' ')
           
-          // Format: Turbine ID - faulty sensor - reason - hour it happened
-          newLogs.push(`${turbineId} - ${fault.sensorType} - ${fault.latestRejectionReason} - ${timeFormatted}`)
+          // Logic to strip the leading 'T' from the ID
+          const formattedId = turbineId.startsWith('T') ? turbineId.substring(1) : turbineId
+          
+          // Format: ID - faulty sensor - reason - count - first error: time
+          newLogs.push(`${formattedId} - ${fault.sensorType} - ${fault.latestRejectionReason} - ${fault.rejectionCount} times - first error: ${timeFormatted}`)
         })
       })
 
       if (newLogs.length === 0) {
-        newLogs.push(`> No faulty sensors detected in the last ${hoursBack} hours.`)
+        newLogs.push(`No faulty sensors detected in the last ${hoursBack} hours.`)
       }
 
       setLogs(newLogs)
@@ -120,7 +123,7 @@ const FaultySensorsTerminal = ({ user, parks }) => {
           <div style={{ color: '#555' }}>&gt; Awaiting diagnostic execution...</div>
         )}
         {logs.map((log, index) => (
-          <div key={index} className="terminal-line">
+          <div key={index} className="terminal-line" style={{ color: '#ef4444' }}>
             <span style={{ color: '#3b82f6' }}>&gt;</span> {log}
           </div>
         ))}
