@@ -3,7 +3,7 @@ import { API_BASE_URL } from './App'
 
 const FaultySensorsTerminal = ({ user, parks }) => {
   const [selectedParkId, setSelectedParkId] = useState('')
-  const [hoursBack, setHoursBack] = useState(480)
+  const [hoursBack, setHoursBack] = useState(24)
   const [logs, setLogs] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
