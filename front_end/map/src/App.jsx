@@ -27,11 +27,13 @@ function App() {
   const [parks, setParks] = useState([])
   const [selectedPark, setSelectedPark] = useState(null)
   
-  // --- New state for single turbine selection ---
+  // --- Turbine & Park State ---
   const [selectedTurbine, setSelectedTurbine] = useState(null)
-  
   const [parkTurbines, setParkTurbines] = useState([])
   const [parkRadius, setParkRadius] = useState(null)
+  
+  // --- New state for faulty sensor data ---
+  const [parkFaults, setParkFaults] = useState({})
   
   const [user, setUser] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -103,9 +105,19 @@ function App() {
           console.error('Failed to fetch radius:', err)
           setParkRadius(null)
         })
+
+      // Fetch faulty sensors for the last 24 hours
+      fetchWithAuth(`${API_BASE_URL}/analytics/parks/${selectedPark.id}/faulty-sensors?hoursBack=24`)
+        .then((res) => res.json())
+        .then((data) => setParkFaults(data))
+        .catch((err) => {
+          console.error('Failed to fetch faults:', err)
+          setParkFaults({}) 
+        })
     } else {
       setParkTurbines([])
       setParkRadius(null)
+      setParkFaults({})
     }
   }, [selectedPark, fetchWithAuth])
 
@@ -217,6 +229,7 @@ function App() {
             user={user} 
             selectedTurbine={selectedTurbine}
             onSelectTurbine={setSelectedTurbine}
+            parkFaults={parkFaults}
           />
         </div>
 
@@ -264,7 +277,6 @@ function App() {
                   {selectedTurbine ? `${selectedTurbine.id} Analytics` : `${selectedPark.name} Average Analytics`}
                 </h2>
                 
-                {/* Back button to return to park view */}
                 {selectedTurbine && (
                   <button 
                     className="btn-secondary" 
@@ -291,11 +303,6 @@ function App() {
         </div>
       </div>
 
-      <div className="main-grid" style={!user ? { gridTemplateColumns: '1fr 2fr' } : {}}>
-          {/* ... existing map and chart panels ... */}
-      </div>
-
-      {/* --- ADD THE NEW TERMINAL HERE --- */}
       <FaultySensorsTerminal user={user} parks={parks} />
 
     </div>
