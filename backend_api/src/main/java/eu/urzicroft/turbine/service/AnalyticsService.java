@@ -6,6 +6,7 @@ import eu.urzicroft.turbine.repository.MeteoDataRepository;
 import eu.urzicroft.turbine.repository.RejectedDataRepository;
 import eu.urzicroft.turbine.repository.SensorDataRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.Comparator;
@@ -43,6 +44,7 @@ public class AnalyticsService {
                 .toList();
     }
 
+    @Cacheable(value = "parkFaultySensors", key = "#parkId + '-' + #hoursBack")
     public Map<String, List<FaultySensorDTO>> getFaultySensorsReportForPark(String parkId, int hoursBack) {
         LocalDateTime since = LocalDateTime.now().minusHours(hoursBack);
         List<RejectedData> rejections = rejectedDataRepository
