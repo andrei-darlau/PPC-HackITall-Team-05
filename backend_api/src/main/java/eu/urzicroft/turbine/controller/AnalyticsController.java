@@ -1,10 +1,12 @@
 package eu.urzicroft.turbine.controller;
 
+import eu.urzicroft.turbine.dto.FaultySensorDTO;
 import eu.urzicroft.turbine.service.AnalyticsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -13,6 +15,15 @@ import java.util.Map;
 public class AnalyticsController {
 
     private final AnalyticsService analyticsService;
+
+    @PreAuthorize("@parkSecurity.canAccessTurbine(authentication, #turbineId)")
+    @GetMapping("/turbines/{turbineId}/faulty-sensors")
+    public List<FaultySensorDTO> getFaultySensors(
+            @PathVariable String turbineId,
+            @RequestParam(defaultValue = "24") int hoursBack) {
+
+        return analyticsService.getFaultySensorsReport(turbineId, hoursBack);
+    }
 
     @PreAuthorize("@parkSecurity.canAccessTurbine(authentication, #turbineId)")
     @GetMapping("/turbines/{turbineId}/status")
