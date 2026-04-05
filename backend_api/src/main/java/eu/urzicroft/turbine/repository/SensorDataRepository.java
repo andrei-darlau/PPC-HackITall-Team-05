@@ -31,7 +31,7 @@ public interface SensorDataRepository extends JpaRepository<SensorData, Long> {
 
     @Query(value = """
     SELECT\s
-        CAST(to_timestamp(floor((extract('epoch' from timestamp) / 900 )) * 900) AS TIMESTAMP) AS "timeBucket",
+        date_bin('15 minutes', timestamp, TIMESTAMP '2000-01-01') AS "timeBucket",
         sensor_type AS "sensorType",
         AVG(current_value) AS "averageValue"
     FROM sensor_readings
@@ -66,7 +66,7 @@ public interface SensorDataRepository extends JpaRepository<SensorData, Long> {
     FROM TurbineBucketAverages
     GROUP BY "timeBucket", sensor_type
     ORDER BY "timeBucket" ASC
-  \s""", nativeQuery = true)
+    \s""", nativeQuery = true)
     List<TurbineHistoryProjection> getAggregatedHistoryForPark(
             @Param("parkId") String parkId,
             @Param("startTime") LocalDateTime startTime,
@@ -75,7 +75,7 @@ public interface SensorDataRepository extends JpaRepository<SensorData, Long> {
     @Query(value = """
     WITH TurbineAverages AS (
         SELECT\s
-            CAST(to_timestamp(floor((extract('epoch' from timestamp) / 900 )) * 900) AS TIMESTAMP) AS "timeBucket",
+            date_bin('15 minutes', timestamp, TIMESTAMP '2000-01-01') AS "timeBucket",
             turbine_id,
             AVG(current_value) AS avg_power
         FROM sensor_readings
@@ -91,7 +91,7 @@ public interface SensorDataRepository extends JpaRepository<SensorData, Long> {
     FROM TurbineAverages
     GROUP BY "timeBucket"
     ORDER BY "timeBucket" ASC
-  \s""", nativeQuery = true)
+    \s""", nativeQuery = true)
     List<TurbineHistoryProjection> getGlobalActivePowerHistory(
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime);

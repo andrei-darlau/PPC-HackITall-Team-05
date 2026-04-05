@@ -21,7 +21,7 @@ public class KpiController {
 
     @PreAuthorize("@parkSecurity.canAccessTurbine(authentication, #turbineId)")
     @GetMapping("/{turbineId}/history")
-    public List<TurbineGraphPointDTO> getTurbineHistory(
+    public List<TurbineMetricsDTO> getTurbineHistory(
             @PathVariable String turbineId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {

@@ -1,6 +1,5 @@
 package eu.urzicroft.turbine.service;
 
-import eu.urzicroft.turbine.dto.TurbineGraphPointDTO;
 import eu.urzicroft.turbine.dto.TurbineHistoryProjection;
 import eu.urzicroft.turbine.dto.TurbineMetricsDTO;
 import eu.urzicroft.turbine.repository.SensorDataRepository;
@@ -21,21 +20,16 @@ public class KpiService {
 
     private final TurbineRepository turbineRepository;
     private final SensorDataRepository sensorDataRepository;
-    private final CacheManager cacheManager; // Inject Caffeine CacheManager
+    private final CacheManager cacheManager;
 
-    public List<TurbineGraphPointDTO> getTurbineHistory(
+    public List<TurbineMetricsDTO> getTurbineHistory(
             String turbineId,
             LocalDateTime start,
             LocalDateTime end) {
-        return sensorDataRepository.getAggregatedHistoryForTurbine(turbineId, start, end)
-                .stream()
-                .map(proj -> TurbineGraphPointDTO.builder()
-                        .timeBucket(proj.getTimeBucket())
-                        .activePower("act_pwt".equals(proj.getSensorType()) ? proj.getAverageValue() : null)
-                        .windSpeed("wd_spd".equals(proj.getSensorType()) ? proj.getAverageValue() : null)
-                        .ambientTemp("turbine_t".equals(proj.getSensorType()) ? proj.getAverageValue() : null)
-                        .build())
-                .toList();
+
+        List<TurbineHistoryProjection> projections = sensorDataRepository.getAggregatedHistoryForTurbine(turbineId, start, end);
+
+        return groupAndMapProjections(projections);
     }
 
     public List<TurbineMetricsDTO> getParkMetricsHistory(
@@ -43,7 +37,6 @@ public class KpiService {
             LocalDateTime start,
             LocalDateTime end) {
 
-        // "parkMetricsBuckets" cache automatically via CaffeineCacheManager on first use
         Cache cache = cacheManager.getCache("parkMetricsBuckets");
         List<TurbineMetricsDTO> result = new ArrayList<>();
         List<LocalDateTime> missingBuckets = new ArrayList<>();
@@ -65,35 +58,11 @@ public class KpiService {
 
         if (!missingBuckets.isEmpty()) {
             LocalDateTime queryStart = missingBuckets.getFirst();
-            LocalDateTime queryEnd = missingBuckets.getLast().plusMinutes(15); // cover the final bucket
+            LocalDateTime queryEnd = missingBuckets.getLast().plusMinutes(15);
 
             List<TurbineHistoryProjection> projections = sensorDataRepository.getAggregatedHistoryForPark(parkId, queryStart, queryEnd);
+            List<TurbineMetricsDTO> dbResults = groupAndMapProjections(projections);
 
-            List<TurbineMetricsDTO> dbResults = projections.stream()
-                    .collect(Collectors.groupingBy(TurbineHistoryProjection::getTimeBucket))
-                    .entrySet().stream()
-                    .map(entry -> {
-                        LocalDateTime bucket = entry.getKey();
-                        TurbineMetricsDTO.TurbineMetricsDTOBuilder builder = TurbineMetricsDTO.builder().timeBucket(bucket);
-
-                        for (TurbineHistoryProjection proj : entry.getValue()) {
-                            if (proj.getAverageValue() == null) continue;
-                            switch (proj.getSensorType()) {
-                                case "act_pwt" -> builder.activePower(proj.getAverageValue());
-                                case "wd_spd" -> builder.windSpeed(proj.getAverageValue());
-                                case "conv_t" -> builder.converterTemp(proj.getAverageValue());
-                                case "gearbox_t" -> builder.gearboxTemp(proj.getAverageValue());
-                                case "gen1_t" -> builder.gen1Temp(proj.getAverageValue());
-                                case "gen2_t" -> builder.gen2Temp(proj.getAverageValue());
-                                case "transformer_t" -> builder.transformerTemp(proj.getAverageValue());
-                                case "turbine_t" -> builder.ambientTemp(proj.getAverageValue());
-                            }
-                        }
-                        return builder.build();
-                    })
-                    .toList();
-
-            // cache results for future requests
             LocalDateTime now = LocalDateTime.now();
             for (TurbineMetricsDTO dto : dbResults) {
                 result.add(dto);
@@ -104,7 +73,6 @@ public class KpiService {
             }
         }
 
-        // ensure chronological order before returning
         result.sort(Comparator.comparing(TurbineMetricsDTO::getTimeBucket));
         return result;
     }
@@ -118,5 +86,34 @@ public class KpiService {
                         (existing, replacement) -> existing,
                         TreeMap::new
                 ));
+    }
+
+    private List<TurbineMetricsDTO> groupAndMapProjections(List<TurbineHistoryProjection> projections) {
+        return projections.stream()
+                .collect(Collectors.groupingBy(TurbineHistoryProjection::getTimeBucket))
+                .entrySet().stream()
+                .map(entry -> buildMetricsDTO(entry.getKey(), entry.getValue()))
+                .sorted(Comparator.comparing(TurbineMetricsDTO::getTimeBucket))
+                .toList();
+    }
+
+    private TurbineMetricsDTO buildMetricsDTO(LocalDateTime bucket, List<TurbineHistoryProjection> projections) {
+        TurbineMetricsDTO.TurbineMetricsDTOBuilder builder = TurbineMetricsDTO.builder().timeBucket(bucket);
+
+        for (TurbineHistoryProjection proj : projections) {
+            if (proj.getAverageValue() == null) continue;
+
+            switch (proj.getSensorType()) {
+                case "act_pwt" -> builder.activePower(proj.getAverageValue());
+                case "wd_spd" -> builder.windSpeed(proj.getAverageValue());
+                case "conv_t" -> builder.converterTemp(proj.getAverageValue());
+                case "gearbox_t" -> builder.gearboxTemp(proj.getAverageValue());
+                case "gen1_t" -> builder.gen1Temp(proj.getAverageValue());
+                case "gen2_t" -> builder.gen2Temp(proj.getAverageValue());
+                case "transformer_t" -> builder.transformerTemp(proj.getAverageValue());
+                case "turbine_t" -> builder.ambientTemp(proj.getAverageValue());
+            }
+        }
+        return builder.build();
     }
 }
