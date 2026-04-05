@@ -1,5 +1,5 @@
-from src.extract import load_wtg_metadata, load_data
-from src.transform import process_chunk_and_save, run_chunked_etl
+from src.extract import load_wtg_metadata
+from src.transform import run_chunked_etl
 import pandas as pd
 from sqlalchemy import create_engine
 from src.config import DB_URL, boto3_session, S3_BASE_PATH
@@ -21,12 +21,13 @@ def main():
         )
         print(f"Successfully updated {len(df_wtg)} turbines.")
 
+        # 4. Process METEO data file-by-file
+        run_chunked_etl('meteo', engine, boto3_session, S3_BASE_PATH)
+        
         # 3. Process PARK (Sensor) data file-by-file
         # This will now print progress for every single file it finishes
         run_chunked_etl('park', engine, boto3_session, S3_BASE_PATH)
 
-        # 4. Process METEO data file-by-file
-        run_chunked_etl('meteo', engine, boto3_session, S3_BASE_PATH)
 
         print("--- All folders processed successfully ---")
 
