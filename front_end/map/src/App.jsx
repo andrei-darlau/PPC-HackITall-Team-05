@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Map from './Map'
 import LiveChart from './LiveChart'
+import ParkDashboard from './ParkDashboard' // Added import
 import ReportExporter from './ReportExporter'
 import SignInModal from './SignInModal' 
 import CreateTenantModal from './CreateTenantModal'
@@ -45,7 +46,6 @@ function App() {
     if (token && !user) {
       const decoded = parseJwt(token)
       if (decoded) {
-        // Adjust "sub" and "role" based on your backend's exact JWT claim names
         setUser({ username: decoded.sub || 'Operator', role: decoded.role })
       } else {
         handleSignOut()
@@ -79,7 +79,7 @@ function App() {
         const formattedParks = data.map((p) => ({
           ...p,
           id: p.parkId,
-          name: p.parkId, // farm.name is now equal to the parkId
+          name: p.parkId, 
           position: [p.averageLat, p.averageLong], 
         }))
         setParks(formattedParks)
@@ -107,23 +107,20 @@ function App() {
     }
   }, [selectedPark, fetchWithAuth])
 
-  // Access check handler used by both map and dropdown
   const handleSelectFarm = async (farm) => {
     const token = localStorage.getItem('auth_token');
     if (!token) return false;
 
     try {
-      // We use a raw fetch to ping the turbines endpoint and catch 403s gracefully
-      // This prevents the fetchWithAuth wrapper from logging the user out on a simple denied click
       const response = await fetch(`${API_BASE_URL}/parks/${farm.id}/turbines`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (response.ok) {
         setSelectedPark(farm);
-        return true; // Access granted
+        return true; 
       } else if (response.status === 403 || response.status === 401) {
-        return false; // Access denied
+        return false; 
       }
     } catch (err) {
       console.error('Failed to verify access:', err);
@@ -132,17 +129,14 @@ function App() {
     return false;
   };
 
-  // Dropdown change handler
   const handleDropdownChange = async (e) => {
     const parkId = e.target.value;
     
-    // Handle deselecting
     if (!parkId) {
       setSelectedPark(null);
       return;
     }
 
-    // Convert both IDs to strings to prevent type mismatch failures
     const farm = parks.find((p) => String(p.id) === String(parkId));
     if (farm) {
       if (!user) {
@@ -218,7 +212,6 @@ function App() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h2 style={{ marginBottom: 0 }}>Geospatial Overview</h2>
             
-            {/* The Park Dropdown Selector */}
             <select 
               value={selectedPark?.id || ""}
               onChange={handleDropdownChange}
@@ -273,9 +266,19 @@ function App() {
           </div>
         )}
         
+        {/* Updated Chart Panel Logic */}
         <div className="panel chart-panel">
-          <h2>Global Telemetry Overview</h2>
-          <LiveChart />
+          {user && selectedPark ? (
+            <>
+              <h2>{selectedPark.name} Analytics</h2>
+              <ParkDashboard selectedPark={selectedPark} />
+            </>
+          ) : (
+            <>
+              <h2>Global Telemetry Overview</h2>
+              <LiveChart />
+            </>
+          )}
         </div>
       </div>
     </div>
