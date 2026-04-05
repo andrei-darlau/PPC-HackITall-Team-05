@@ -17,7 +17,7 @@ const MapController = ({ selectedPark }) => {
   return null
 }
 
-const Map = ({ farms, onSelectFarm, selectedPark, radius, turbines = [], user }) => {
+const Map = ({ farms, onSelectFarm, selectedPark, radius, turbines = [], user, selectedTurbine, onSelectTurbine }) => {
   const centerPosition = [45.0, 25.0] 
   const [deniedParkId, setDeniedParkId] = useState(null) 
 
@@ -92,24 +92,33 @@ const Map = ({ farms, onSelectFarm, selectedPark, radius, turbines = [], user })
           />
         )}
 
-        {selectedPark && !isVisitor && turbines.map((turbine) => (
-          <Circle
-            key={turbine.id}
-            center={[turbine.latY, turbine.longX]}
-            radius={40}
-            pathOptions={{ 
-              fillColor: '#10b981', 
-              color: '#059669', 
-              fillOpacity: 0.8, 
-              weight: 2 
-            }}
-          >
-            <Popup>
-              <strong>Turbine: {turbine.id}</strong><br/>
-              Model: {turbine.wtgModelId}
-            </Popup>
-          </Circle>
-        ))}
+        {/* Dynamic Turbine Rendering with Click Handlers */}
+        {selectedPark && !isVisitor && turbines.map((turbine) => {
+          const isSelected = selectedTurbine?.id === turbine.id;
+          
+          return (
+            <Circle
+              key={turbine.id}
+              center={[turbine.latY, turbine.longX]}
+              radius={isSelected ? 60 : 40} // Enlarge if selected
+              eventHandlers={{
+                click: () => onSelectTurbine(turbine)
+              }}
+              pathOptions={{ 
+                // Highlight the selected turbine in blue
+                fillColor: isSelected ? '#3b82f6' : '#10b981', 
+                color: isSelected ? '#2563eb' : '#059669', 
+                fillOpacity: isSelected ? 1 : 0.8, 
+                weight: isSelected ? 3 : 2 
+              }}
+            >
+              <Popup>
+                <strong>Turbine: {turbine.id}</strong><br/>
+                Model: {turbine.wtgModelId}
+              </Popup>
+            </Circle>
+          )
+        })}
       </MapContainer>
     </div>
   )

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Map from './Map'
 import LiveChart from './LiveChart'
-import ParkDashboard from './ParkDashboard' // Added import
+import ParkDashboard from './ParkDashboard' // Make sure you import your ParkDashboard!
 import ReportExporter from './ReportExporter'
 import SignInModal from './SignInModal' 
 import CreateTenantModal from './CreateTenantModal'
@@ -9,7 +9,6 @@ import './App.css'
 
 export const API_BASE_URL = 'http://10.200.22.157:6767/api/v1'
 
-// Helper to decode JWT payload safely
 export const parseJwt = (token) => {
   try {
     const base64Url = token.split('.')[1]
@@ -26,10 +25,13 @@ export const parseJwt = (token) => {
 function App() {
   const [parks, setParks] = useState([])
   const [selectedPark, setSelectedPark] = useState(null)
+  
+  // --- New state for single turbine selection ---
+  const [selectedTurbine, setSelectedTurbine] = useState(null)
+  
   const [parkTurbines, setParkTurbines] = useState([])
   const [parkRadius, setParkRadius] = useState(null)
   
-  // --- Auth State ---
   const [user, setUser] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false)
@@ -37,10 +39,10 @@ function App() {
   const handleSignOut = useCallback(() => {
     setUser(null)
     setSelectedPark(null)
+    setSelectedTurbine(null)
     localStorage.removeItem('auth_token')
   }, [])
 
-  // Auto-login check: decode the existing token to restore the user state
   useEffect(() => {
     const token = localStorage.getItem('auth_token')
     if (token && !user) {
@@ -71,7 +73,6 @@ function App() {
     return response;
   }, [handleSignOut]);
 
-  // Initial Data Load
   useEffect(() => {
     fetchWithAuth(`${API_BASE_URL}/parks/locations`)
       .then((res) => res.json())
@@ -118,6 +119,7 @@ function App() {
 
       if (response.ok) {
         setSelectedPark(farm);
+        setSelectedTurbine(null); // Reset turbine view if changing parks
         return true; 
       } else if (response.status === 403 || response.status === 401) {
         return false; 
@@ -134,6 +136,7 @@ function App() {
     
     if (!parkId) {
       setSelectedPark(null);
+      setSelectedTurbine(null);
       return;
     }
 
@@ -153,17 +156,8 @@ function App() {
 
   return (
     <div className="dashboard-container">
-      <SignInModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        onSignIn={setUser} 
-      />
-
-      <CreateTenantModal 
-        isOpen={isCreateUserModalOpen} 
-        onClose={() => setIsCreateUserModalOpen(false)} 
-        parks={parks} 
-      />
+      <SignInModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSignIn={setUser} />
+      <CreateTenantModal isOpen={isCreateUserModalOpen} onClose={() => setIsCreateUserModalOpen(false)} parks={parks} />
 
       <header className="header-row">
         <div>
@@ -173,11 +167,7 @@ function App() {
         
         <div className="header-actions">
           {user?.role === 'ROLE_ADMIN' && (
-            <button 
-              className="btn-secondary" 
-              onClick={() => setIsCreateUserModalOpen(true)}
-              style={{ marginRight: '8px' }}
-            >
+            <button className="btn-secondary" onClick={() => setIsCreateUserModalOpen(true)} style={{ marginRight: '8px' }}>
               + Create User
             </button>
           )}
@@ -186,24 +176,13 @@ function App() {
             <div className="user-badge">
               <span>{user.username}</span>
               <span className="user-role">{user.role}</span>
-              <button 
-                onClick={handleSignOut} 
-                style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', marginLeft: '4px' }}
-                title="Sign Out"
-              >
-                ✕
-              </button>
+              <button onClick={handleSignOut} style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', marginLeft: '4px' }} title="Sign Out">✕</button>
             </div>
           ) : (
-            <button className="btn-secondary" onClick={() => setIsModalOpen(true)}>
-              Sign In
-            </button>
+            <button className="btn-secondary" onClick={() => setIsModalOpen(true)}>Sign In</button>
           )}
 
-          <ReportExporter 
-            user={user} 
-            onRequestAuth={() => setIsModalOpen(true)} 
-          />
+          <ReportExporter user={user} onRequestAuth={() => setIsModalOpen(true)} />
         </div>
       </header>
       
@@ -216,22 +195,14 @@ function App() {
               value={selectedPark?.id || ""}
               onChange={handleDropdownChange}
               style={{
-                padding: '8px 12px',
-                borderRadius: '6px',
-                border: '1px solid var(--border)',
-                background: 'var(--bg)',
-                color: 'var(--text-h)',
-                fontFamily: 'var(--sans)',
-                fontSize: '13px',
-                outline: 'none',
-                cursor: 'pointer'
+                padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)',
+                background: 'var(--bg)', color: 'var(--text-h)', fontFamily: 'var(--sans)',
+                fontSize: '13px', outline: 'none', cursor: 'pointer'
               }}
             >
               <option value="">-- Select a Park --</option>
               {parks.map(park => (
-                <option key={park.id} value={park.id}>
-                  {park.name}
-                </option>
+                <option key={park.id} value={park.id}>{park.name}</option>
               ))}
             </select>
           </div>
@@ -243,6 +214,8 @@ function App() {
             radius={parkRadius} 
             turbines={parkTurbines}
             user={user} 
+            selectedTurbine={selectedTurbine}
+            onSelectTurbine={setSelectedTurbine}
           />
         </div>
 
@@ -251,12 +224,28 @@ function App() {
             <h2>{selectedPark ? `${selectedPark.name} Turbines` : 'Park Details'}</h2>
             {selectedPark ? (
               <div className="turbine-list">
-                {parkTurbines.map((turbine) => (
-                  <div key={turbine.id} className="turbine-list-item">
-                    <strong>{turbine.id}</strong>
-                    <span className="turbine-model">Model: {turbine.wtgModelId}</span>
-                  </div>
-                ))}
+                {parkTurbines.map((turbine) => {
+                  const isSelected = selectedTurbine?.id === turbine.id;
+                  
+                  return (
+                    <div 
+                      key={turbine.id} 
+                      className="turbine-list-item"
+                      onClick={() => setSelectedTurbine(turbine)}
+                      style={{ 
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        borderColor: isSelected ? 'var(--accent)' : 'var(--border)',
+                        background: isSelected ? 'var(--accent-bg)' : 'var(--bg)'
+                      }}
+                    >
+                      <strong style={{ color: isSelected ? 'var(--accent)' : 'var(--text-h)' }}>
+                        {turbine.id}
+                      </strong>
+                      <span className="turbine-model">Model: {turbine.wtgModelId}</span>
+                    </div>
+                  )
+                })}
               </div>
             ) : (
                <div className="empty-state" style={{ height: '400px' }}>
@@ -266,12 +255,31 @@ function App() {
           </div>
         )}
         
-        {/* Updated Chart Panel Logic */}
         <div className="panel chart-panel">
           {user && selectedPark ? (
             <>
-              <h2>{selectedPark.name} Analytics</h2>
-              <ParkDashboard selectedPark={selectedPark} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h2 style={{ margin: 0 }}>
+                  {selectedTurbine ? `${selectedTurbine.id} Analytics` : `${selectedPark.name} Average Analytics`}
+                </h2>
+                
+                {/* Back button to return to park view */}
+                {selectedTurbine && (
+                  <button 
+                    className="btn-secondary" 
+                    onClick={() => setSelectedTurbine(null)}
+                    style={{ fontSize: '11px', padding: '4px 8px' }}
+                  >
+                    ← View Park Average
+                  </button>
+                )}
+              </div>
+              
+              <ParkDashboard 
+                key={selectedTurbine ? selectedTurbine.id : selectedPark.id}
+                selectedPark={selectedPark} 
+                selectedTurbine={selectedTurbine} 
+              />
             </>
           ) : (
             <>

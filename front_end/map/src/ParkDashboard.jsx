@@ -1,37 +1,26 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts'
 import { API_BASE_URL } from './App'
 
-const ParkDashboard = ({ selectedPark }) => {
+const ParkDashboard = ({ selectedPark, selectedTurbine }) => {
   const [data, setData] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  // Filter States
   const [graphType, setGraphType] = useState('power')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   
-  // Live Mode States
   const [isLive, setIsLive] = useState(false)
-  const [livePeriod, setLivePeriod] = useState(24) // in hours
+  const [livePeriod, setLivePeriod] = useState(24) 
   
-  // Refs to avoid stale closures inside the setTimeout scheduler loop
   const timeoutRef = useRef(null)
   const dataRef = useRef([])
   const isLiveRef = useRef(isLive)
   const livePeriodRef = useRef(livePeriod)
 
-  // Keep refs in sync with React state
   useEffect(() => { isLiveRef.current = isLive }, [isLive])
   useEffect(() => { livePeriodRef.current = livePeriod }, [livePeriod])
   useEffect(() => { dataRef.current = data }, [data])
@@ -41,7 +30,6 @@ const ParkDashboard = ({ selectedPark }) => {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
   }
 
-  // Initialize dates to the last 24 hours
   useEffect(() => {
     const end = new Date()
     const start = new Date()
@@ -50,9 +38,8 @@ const ParkDashboard = ({ selectedPark }) => {
     setEndDate(formatForInput(end))
   }, [])
 
-  // Core fetch logic with Delta Caching flag
   const fetchParkData = useCallback(async (startIso, endIso, isDelta = false) => {
-    if (!selectedPark) return
+    if (!selectedPark && !selectedTurbine) return
 
     if (!isDelta) setIsLoading(true)
     setError(null)
@@ -61,48 +48,36 @@ const ParkDashboard = ({ selectedPark }) => {
       const token = localStorage.getItem('auth_token')
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
 
-      const url = new URL(`${API_BASE_URL}/kpi/${selectedPark.id}/metrics`)
+      // Switch endpoint based on whether we are viewing a single turbine or a whole park
+      const endpoint = selectedTurbine 
+        ? `${API_BASE_URL}/kpi/${selectedTurbine.id}/history`
+        : `${API_BASE_URL}/kpi/${selectedPark.id}/metrics`;
+
+      const url = new URL(endpoint)
       url.searchParams.append('start', startIso)
       url.searchParams.append('end', endIso)
 
       const response = await fetch(url.toString(), { headers })
       
       if (!response.ok) {
-        if (response.status === 403) throw new Error('You do not have permission to view telemetry for this park.')
-        throw new Error('Failed to fetch park telemetry data')
+        if (response.status === 403) throw new Error('You do not have permission to view telemetry for this resource.')
+        throw new Error('Failed to fetch telemetry data')
       }
 
       const payload = await response.json()
       
       const formattedData = payload.map(item => {
-        const mappedItem = {
-          ...item,
-          time: new Date(item.timeBucket).getTime()
-        };
-
-        // Convert Active Power from kW to MW
-        if (mappedItem.activePower != null) {
-          mappedItem.activePower = Number((mappedItem.activePower / 1000).toFixed(2));
-        }
-
-        // Convert Wind Speed from km/h to m/s
-        if (mappedItem.windSpeed != null) {
-          mappedItem.windSpeed = Number((mappedItem.windSpeed / 3.6).toFixed(2));
-        }
-
+        const mappedItem = { ...item, time: new Date(item.timeBucket).getTime() };
+        if (mappedItem.activePower != null) mappedItem.activePower = Number((mappedItem.activePower / 1000).toFixed(2));
+        if (mappedItem.windSpeed != null) mappedItem.windSpeed = Number((mappedItem.windSpeed / 3.6).toFixed(2));
         return mappedItem;
       })
 
-      // HYBRID CLIENT CACHING: Merge, Deduplicate, and Prune
       setData(prevData => {
-        // If delta fetch, append to existing data. Otherwise, replace entirely.
         const combined = isDelta ? [...prevData, ...formattedData] : formattedData;
-        
-        // Deduplicate based on exact timestamp to prevent overlapping bucket issues
         const uniqueData = Array.from(new Map(combined.map(item => [item.time, item])).values());
         uniqueData.sort((a, b) => a.time - b.time);
 
-        // If in live mode, prune old data falling outside the selected live period
         if (isLiveRef.current) {
           const cutoffTime = new Date().getTime() - (livePeriodRef.current * 60 * 60 * 1000);
           return uniqueData.filter(d => d.time >= cutoffTime);
@@ -112,22 +87,20 @@ const ParkDashboard = ({ selectedPark }) => {
       })
 
     } catch (err) {
-      console.error('Error loading park data:', err)
+      console.error('Error loading data:', err)
       setError(err.message)
       if (!isDelta) setData([])
     } finally {
       setIsLoading(false)
     }
-  }, [selectedPark])
+  }, [selectedPark, selectedTurbine])
 
-  // --- Historical Mode Fetch ---
   useEffect(() => {
     if (!isLive && startDate && endDate) {
       fetchParkData(`${startDate}:00`, `${endDate}:00`, false)
     }
   }, [isLive, startDate, endDate, graphType, fetchParkData])
 
-  // --- Live Mode Scheduler & Delta Fetching ---
   useEffect(() => {
     let isMounted = true;
 
@@ -143,14 +116,11 @@ const ParkDashboard = ({ selectedPark }) => {
 
       const currentData = dataRef.current;
       
-      // If we already have data on screen, ONLY ask for data since our last known data point
       if (currentData.length > 0) {
         const lastDataPointTime = currentData[currentData.length - 1].time;
-        // Add 1 millisecond so we don't query the exact same border timestamp
         startIso = new Date(lastDataPointTime + 1).toISOString();
         isDelta = true;
       } else {
-        // First load of live mode: fetch the entire period requested
         const start = new Date();
         start.setHours(start.getHours() - livePeriodRef.current);
         startIso = start.toISOString();
@@ -162,7 +132,7 @@ const ParkDashboard = ({ selectedPark }) => {
     const scheduleNextRefresh = () => {
       const now = new Date();
       const currentMinute = now.getMinutes();
-      const targetMinutes = [1, 16, 31, 46]; // Synchronized with backend 15m intervals
+      const targetMinutes = [1, 16, 31, 46];
       
       let nextMinute = targetMinutes.find(m => m > currentMinute);
       const nextDate = new Date(now);
@@ -187,7 +157,6 @@ const ParkDashboard = ({ selectedPark }) => {
       }, msUntilNext);
     };
 
-    // Immediate full fetch when entering Live mode or changing the period, then start scheduler
     const start = new Date();
     start.setHours(start.getHours() - livePeriod);
     fetchParkData(start.toISOString(), new Date().toISOString(), false).then(() => {
@@ -202,12 +171,7 @@ const ParkDashboard = ({ selectedPark }) => {
 
 
   const formatTime = (timestamp) => {
-    return new Date(timestamp).toLocaleString([], {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    return new Date(timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
   }
 
   const getUnit = () => {
@@ -308,7 +272,7 @@ const ParkDashboard = ({ selectedPark }) => {
 
       <div style={{ width: '100%', height: '360px', position: 'relative' }}>
         {isLoading && data.length === 0 ? (
-          <div className="empty-state" style={{ height: '100%' }}>Loading park telemetry...</div>
+          <div className="empty-state" style={{ height: '100%' }}>Loading telemetry...</div>
         ) : error ? (
           <div className="empty-state" style={{ height: '100%', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}>{error}</div>
         ) : data.length === 0 ? (
