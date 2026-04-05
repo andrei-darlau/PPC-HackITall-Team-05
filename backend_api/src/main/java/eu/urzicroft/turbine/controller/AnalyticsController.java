@@ -25,6 +25,14 @@ public class AnalyticsController {
         return analyticsService.getFaultySensorsReport(turbineId, hoursBack);
     }
 
+    @PreAuthorize("@parkSecurity.isParkTenant(authentication, #parkId)")
+    @GetMapping("/parks/{parkId}/faulty-sensors")
+    public Map<String, List<FaultySensorDTO>> getFaultyFromPark(
+            @PathVariable String parkId,
+            @RequestParam(defaultValue = "24") int hoursBack) {
+        return analyticsService.getFaultySensorsReportForPark(parkId, hoursBack);
+    }
+
     @PreAuthorize("@parkSecurity.canAccessTurbine(authentication, #turbineId)")
     @GetMapping("/turbines/{turbineId}/status")
     public Map<String, Object> getTurbineStatus(@PathVariable String turbineId) {

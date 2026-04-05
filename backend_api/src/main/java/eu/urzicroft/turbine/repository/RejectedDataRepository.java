@@ -11,4 +11,9 @@ public interface RejectedDataRepository extends JpaRepository<RejectedData, Long
             String turbineId,
             LocalDateTime timestamp
     );
+
+    List<RejectedData> findByParkIdAndTimestampAfterOrderByTimestampDesc(
+            String parkId,
+            LocalDateTime timestamp
+    );
 }

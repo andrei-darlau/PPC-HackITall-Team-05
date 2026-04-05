@@ -8,6 +8,7 @@ import eu.urzicroft.turbine.repository.SensorDataRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +41,34 @@ public class AnalyticsService {
                             .build();
                 })
                 .toList();
+    }
+
+    public Map<String, List<FaultySensorDTO>> getFaultySensorsReportForPark(String parkId, int hoursBack) {
+        LocalDateTime since = LocalDateTime.now().minusHours(hoursBack);
+        List<RejectedData> rejections = rejectedDataRepository
+                .findByParkIdAndTimestampAfterOrderByTimestampDesc(parkId, since);
+
+        return rejections.stream()
+                .collect(Collectors.groupingBy(
+                        RejectedData::getTurbineId,
+                        Collectors.collectingAndThen(
+                                Collectors.toList(),
+                                turbineRejections -> turbineRejections.stream()
+                                        .collect(Collectors.groupingBy(RejectedData::getSensorType))
+                                        .entrySet().stream()
+                                        .map(entry -> {
+                                            RejectedData latestRejection = entry.getValue().getFirst();
+                                            return FaultySensorDTO.builder()
+                                                    .sensorType(entry.getKey())
+                                                    .rejectionCount(entry.getValue().size())
+                                                    .latestRejectionReason(latestRejection.getRejectionReason())
+                                                    .latestRejectedAt(latestRejection.getTimestamp())
+                                                    .build();
+                                        })
+                                        .sorted(Comparator.comparing(FaultySensorDTO::getLatestRejectedAt).reversed())
+                                        .toList()
+                        )
+                ));
     }
 
     public Map<String, Object> checkDiscrepancy(String turbineId) {
