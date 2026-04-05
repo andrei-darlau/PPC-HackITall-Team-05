@@ -56,11 +56,8 @@ const FaultySensorsTerminal = ({ user, parks }) => {
           // Format the timestamp for cleaner reading
           const timeFormatted = fault.latestRejectedAt.replace('T', ' ')
           
-          // Logic to strip the leading 'T' from the ID
-          const formattedId = turbineId.startsWith('T') ? turbineId.substring(1) : turbineId
-          
           // Format: ID - faulty sensor - reason - count - first error: time
-          newLogs.push(`${formattedId} - ${fault.sensorType} - ${fault.latestRejectionReason} - ${fault.rejectionCount} times - first error: ${timeFormatted}`)
+          newLogs.push(`${turbineId} - ${fault.sensorType} - ${fault.latestRejectionReason} - ${fault.rejectionCount} times - first error: ${timeFormatted}`)
         })
       })
 
