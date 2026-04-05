@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -46,13 +47,12 @@ public class ReportService {
 
             for (Turbine t : turbines) {
                 Double avgPowerYesterday = powerMap.get(t.getId());
-                double powerVal = avgPowerYesterday != null ? avgPowerYesterday : 0.0;
-
-                writer.printf("%s,%s,%s,%.2f%n",
+                String powerValStr = avgPowerYesterday != null ? String.format(Locale.US, "%.2f", avgPowerYesterday) : "";
+                writer.printf("%s,%s,%s,%s%n",
                         startOfYesterday.toLocalDate().toString(),
                         t.getParkId(),
                         t.getId(),
-                        powerVal
+                        powerValStr
                 );
             }
             log.info("Successfully generated TSO report: {}", fileName);
