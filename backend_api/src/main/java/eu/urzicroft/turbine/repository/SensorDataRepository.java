@@ -14,16 +14,16 @@ public interface SensorDataRepository extends JpaRepository<SensorData, Long> {
 
     @Query("SELECT AVG(s.currentValue) FROM SensorData s " +
             "WHERE s.turbineId = :turbineId AND s.sensorType = :sensorType " +
-            "AND s.datetimeCurrentValue >= :startTime")
+            "AND s.timestamp >= :startTime")
     Double getAverageValueSince(@Param("turbineId") String turbineId,
                                 @Param("sensorType") String sensorType,
                                 @Param("startTime") LocalDateTime startTime);
 
     @Query("SELECT s FROM SensorData s " +
             "WHERE s.turbineId = :turbineId " +
-            "AND s.datetimeCurrentValue >= :startTime " +
-            "AND s.datetimeCurrentValue <= :endTime " +
-            "ORDER BY s.datetimeCurrentValue ASC")
+            "AND s.timestamp >= :startTime " +
+            "AND s.timestamp <= :endTime " +
+            "ORDER BY s.timestamp ASC")
     List<SensorData> getHistoryForTurbine(
             @Param("turbineId") String turbineId,
             @Param("startTime") LocalDateTime startTime,

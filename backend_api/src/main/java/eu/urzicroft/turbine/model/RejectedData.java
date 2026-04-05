@@ -1,16 +1,20 @@
 package eu.urzicroft.turbine.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
+
 import java.time.LocalDateTime;
 
-@Data
-@Entity
-@Table(name = "sensor_readings")
-public class SensorData {
+@Table(schema = "rejected_readings")
+public class RejectedData {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "tag_name")
+    private String tagName;
+
+    @Column(name = "etl_ts")
+    private LocalDateTime etlTs;
 
     @Column(name = "park_id")
     private String parkId;
@@ -26,4 +30,7 @@ public class SensorData {
 
     @Column(name = "current_value")
     private Double currentValue;
+
+    @Column(name = "rejection_reason")
+    private String rejectionReason;
 }

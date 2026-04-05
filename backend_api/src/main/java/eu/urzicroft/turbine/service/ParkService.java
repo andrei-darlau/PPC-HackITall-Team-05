@@ -1,6 +1,5 @@
 package eu.urzicroft.turbine.service;
 
-import eu.urzicroft.turbine.annotation.TurbineDependentCache;
 import eu.urzicroft.turbine.dto.ParkLocationDTO;
 import eu.urzicroft.turbine.model.Turbine;
 import eu.urzicroft.turbine.repository.TurbineRepository;
@@ -19,12 +18,12 @@ public class ParkService {
     private final TurbineRepository turbineRepository;
     private static final double KM_PER_DEGREE = 111.32;
 
-    @TurbineDependentCache
     @Cacheable("parkLocations")
     public List<ParkLocationDTO> getParkLocations() {
         return turbineRepository.getAverageParkLocations();
     }
 
+    @Cacheable("parks")
     public List<String> getAllParkIds() {
         return turbineRepository.getAllParkIds();
     }
@@ -33,11 +32,9 @@ public class ParkService {
         return turbineRepository.findByParkId(parkId);
     }
 
-    @TurbineDependentCache
     @Cacheable(value = "parkRadius", key = "#parkId")
     public Double getParkRadius(String parkId) {
         List<Turbine> turbines = turbineRepository.findByParkId(parkId);
-
         if (turbines == null || turbines.isEmpty()) {
             return 0.0;
         }
@@ -64,10 +61,8 @@ public class ParkService {
 
     private double calculateFlatDistance(double lat1, double lon1, double lat2, double lon2) {
         double avgLatRadians = Math.toRadians((lat1 + lat2) / 2.0);
-
         double deltaLatKm = (lat2 - lat1) * KM_PER_DEGREE;
         double deltaLonKm = (lon2 - lon1) * KM_PER_DEGREE * Math.cos(avgLatRadians);
-
         return Math.sqrt((deltaLatKm * deltaLatKm) + (deltaLonKm * deltaLonKm));
     }
 }

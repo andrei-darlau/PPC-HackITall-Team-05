@@ -3,8 +3,11 @@ package eu.urzicroft.turbine.controller;
 import eu.urzicroft.turbine.dto.TenantCreationDTO;
 import eu.urzicroft.turbine.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/admin")
@@ -14,11 +17,11 @@ public class AdminController {
      private final UserService userService;
 
     @PostMapping("/tenants")
-    public String createTenant(@RequestBody TenantCreationDTO request) {
-        String assignedRole = "PARK_" + request.getParkId();
+    public ResponseEntity<Map<String, String>> createTenant(@RequestBody TenantCreationDTO request) {
+        String assignedRole = request.getParkId();
 
          userService.createTenant(request.getUsername(), request.getPassword(), assignedRole);
 
-        return "Successfully created tenant " + request.getUsername() + " with access to " + request.getParkId();
+        return ResponseEntity.ok(Map.of("message", "Successfully created tenant " + request.getUsername()));
     }
 }

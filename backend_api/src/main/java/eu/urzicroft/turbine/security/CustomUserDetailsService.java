@@ -1,4 +1,3 @@
-// eu/urzicroft/turbine/security/CustomUserDetailsService.java
 package eu.urzicroft.turbine.security;
 
 import eu.urzicroft.turbine.model.UserAccount;
