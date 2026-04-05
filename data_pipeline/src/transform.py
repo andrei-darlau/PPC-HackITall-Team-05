@@ -121,7 +121,7 @@ def process_park_chunk(df, engine):
 	is_neg_power = (df['sensor_type'] == 'act_pwt') & (df['current_value'] < 1)
 	
 	is_power_underperform = (df['sensor_type'] == 'act_pwt') & \
-							(df['current_value'] <= 100) & \
+							(df['current_value'] <= 80) & \
 							(df['timestamp'].isin(high_wind_times))
 
 	# Combine them for the master mask
