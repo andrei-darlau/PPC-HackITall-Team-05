@@ -57,6 +57,7 @@ const ParkDashboard = ({ selectedPark, selectedTurbine }) => {
       url.searchParams.append('start', startIso)
       url.searchParams.append('end', endIso)
 
+      // 1. Fetch Primary Sensor Data
       const response = await fetch(url.toString(), { headers })
       
       if (!response.ok) {
@@ -65,11 +66,60 @@ const ParkDashboard = ({ selectedPark, selectedTurbine }) => {
       }
 
       const payload = await response.json()
+
+      // 2. Fetch Meteo Fallback Data (Only if viewing a specific turbine)
+      let fallbackEntries = [];
+      if (selectedTurbine) {
+        try {
+          const fallbackUrl = new URL(`${API_BASE_URL}/meteo/turbines/${selectedTurbine.id}/wind-speed-fallback`)
+          fallbackUrl.searchParams.append('start', startIso)
+          fallbackUrl.searchParams.append('end', endIso)
+          
+          const fallbackRes = await fetch(fallbackUrl.toString(), { headers })
+          if (fallbackRes.ok) {
+            const fallbackData = await fallbackRes.json()
+            // Convert Map<LocalDateTime, Double> to array for easier time-matching
+            fallbackEntries = Object.entries(fallbackData).map(([iso, speed]) => ({
+              time: new Date(iso).getTime(),
+              speed: speed
+            }))
+          }
+        } catch (err) {
+          console.warn('Failed to load meteo fallback data:', err)
+        }
+      }
       
+      // 3. Map and Merge Data
       const formattedData = payload.map(item => {
-        const mappedItem = { ...item, time: new Date(item.timeBucket).getTime() };
-        if (mappedItem.activePower != null) mappedItem.activePower = Number((mappedItem.activePower / 1000).toFixed(2));
-        if (mappedItem.windSpeed != null) mappedItem.windSpeed = Number((mappedItem.windSpeed / 3.6).toFixed(2));
+        const timeMs = new Date(item.timeBucket).getTime();
+        const mappedItem = { ...item, time: timeMs, isFallback: false };
+
+        if (mappedItem.activePower != null) {
+            mappedItem.activePower = Number((mappedItem.activePower / 1000).toFixed(2));
+        }
+        
+        // Handle Wind Speed and Fill Gaps
+        if (mappedItem.windSpeed != null) {
+          mappedItem.windSpeed = Number((mappedItem.windSpeed / 3.6).toFixed(2));
+        } else if (selectedTurbine) {
+          // Gap detected! Look for a fallback reading within this 15-minute bucket
+          const bucketEnd = timeMs + 15 * 60 * 1000;
+          const fallback = fallbackEntries.find(f => f.time >= timeMs && f.time < bucketEnd);
+
+          if (fallback && fallback.speed != null) {
+            mappedItem.windSpeed = Number((fallback.speed / 3.6).toFixed(2));
+            mappedItem.isFallback = true; // Flag for UI styling
+          }
+        }
+
+        // Format other temperatures if they exist
+        if (mappedItem.ambientTemp != null) mappedItem.ambientTemp = Number(mappedItem.ambientTemp.toFixed(2));
+        if (mappedItem.converterTemp != null) mappedItem.converterTemp = Number(mappedItem.converterTemp.toFixed(2));
+        if (mappedItem.gearboxTemp != null) mappedItem.gearboxTemp = Number(mappedItem.gearboxTemp.toFixed(2));
+        if (mappedItem.gen1Temp != null) mappedItem.gen1Temp = Number(mappedItem.gen1Temp.toFixed(2));
+        if (mappedItem.gen2Temp != null) mappedItem.gen2Temp = Number(mappedItem.gen2Temp.toFixed(2));
+        if (mappedItem.transformerTemp != null) mappedItem.transformerTemp = Number(mappedItem.transformerTemp.toFixed(2));
+
         return mappedItem;
       })
 
@@ -182,7 +232,8 @@ const ParkDashboard = ({ selectedPark, selectedTurbine }) => {
 
   const renderLines = () => {
     if (graphType === 'power') return <Line type="monotone" dataKey="activePower" name="Active Power" stroke="var(--accent)" strokeWidth={2} dot={false} isAnimationActive={false} />
-    if (graphType === 'windSpeed') return <Line type="monotone" dataKey="windSpeed" name="Wind Speed" stroke="#10b981" strokeWidth={2} dot={false} isAnimationActive={false} />
+    // Added connectNulls={true} to bridge any lingering gaps
+    if (graphType === 'windSpeed') return <Line type="monotone" dataKey="windSpeed" name="Wind Speed" stroke="#10b981" strokeWidth={2} dot={false} isAnimationActive={false} connectNulls={true} />
     if (graphType === 'temperature') return (
       <>
         <Line type="monotone" dataKey="ambientTemp" name="Ambient" stroke="#3b82f6" strokeWidth={2} dot={false} isAnimationActive={false} />
@@ -298,6 +349,12 @@ const ParkDashboard = ({ selectedPark, selectedTurbine }) => {
               />
               <Tooltip 
                 labelFormatter={formatTime} 
+                formatter={(value, name, props) => {
+                  if (name === 'Wind Speed' && props.payload.isFallback) {
+                    return [`${value} ${getUnit()} (Meteo Fallback)`, name];
+                  }
+                  return [`${value} ${getUnit()}`, name];
+                }}
                 contentStyle={{ backgroundColor: 'var(--panel-bg)', borderColor: 'var(--border)', borderRadius: '8px', color: 'var(--text-h)' }} 
               />
               <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '12px', color: 'var(--text)' }}/>

@@ -1,10 +1,12 @@
 package eu.urzicroft.turbine.model;
 
 import jakarta.persistence.*;
-
+import lombok.Data;
 import java.time.LocalDateTime;
 
-@Table(schema = "rejected_readings")
+@Data
+@Entity
+@Table(name = "rejected_readings")
 public class RejectedData {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
