@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { API_BASE_URL, parseJwt } from './App' // Import the parser
+import { API_BASE_URL, parseJwt } from './App'
 
 const SignInModal = ({ isOpen, onClose, onSignIn }) => {
   const [username, setUsername] = useState('')
