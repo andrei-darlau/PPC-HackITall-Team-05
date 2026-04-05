@@ -54,12 +54,6 @@
   color: var(--text-h);
 }
 
-.bottom-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-}
-
 .panel {
   background: var(--panel-bg);
   border: 1px solid var(--border);

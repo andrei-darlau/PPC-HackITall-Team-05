@@ -1,6 +1,5 @@
 package eu.urzicroft.turbine.security;
 
-import eu.urzicroft.turbine.model.Turbine;
 import eu.urzicroft.turbine.repository.TurbineRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -12,7 +11,7 @@ public class ParkSecurityEvaluator {
 
     private final TurbineRepository turbineRepository;
 
-    public boolean canAccessTurbine(Authentication authentication, String turbineId) {
+    public boolean isParkTenant(Authentication authentication, String parkId) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return false;
         }
@@ -24,13 +23,14 @@ public class ParkSecurityEvaluator {
             return true;
         }
 
-        Turbine turbine = turbineRepository.findById(turbineId).orElse(null);
-        if (turbine == null) {
-            return false;
-        }
-
-        String targetParkId = turbine.getParkId();
         return authentication.getAuthorities().stream()
-                .anyMatch(auth -> ("PARK_" + targetParkId).equals(auth.getAuthority()));
+                .anyMatch(auth -> ("PARK_" + parkId).equals(auth.getAuthority()));
+    }
+
+    public boolean canAccessTurbine(Authentication authentication, String turbineId) {
+        return turbineRepository
+                .findById(turbineId)
+                .map(t -> isParkTenant(authentication, t.getParkId()))
+                .orElse(false);
     }
 }
