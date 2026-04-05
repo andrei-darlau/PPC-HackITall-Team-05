@@ -1,6 +1,7 @@
 package eu.urzicroft.turbine.controller;
 
 import eu.urzicroft.turbine.dto.TurbineGraphPointDTO;
+import eu.urzicroft.turbine.dto.TurbineMetricsDTO;
 import eu.urzicroft.turbine.service.KpiService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -31,8 +32,18 @@ public class KpiController {
     @GetMapping("/history/public")
     public Map<LocalDateTime, Double> getGlobalPublicHistory() {
         LocalDateTime end = LocalDateTime.now();
-        LocalDateTime start = end.minusDays(100);
+        LocalDateTime start = end.minusDays(10);
 
         return kpiService.getGlobalPublicHistory(start, end);
+    }
+
+    @PreAuthorize("@parkSecurity.isParkTenant(authentication, #parkId)")
+    @GetMapping("/{parkId}/metrics")
+    public List<TurbineMetricsDTO> getParkMetrics(
+            @PathVariable String parkId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
+
+        return kpiService.getParkMetricsHistory(parkId, start, end);
     }
 }

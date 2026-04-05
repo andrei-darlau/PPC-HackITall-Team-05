@@ -31,15 +31,15 @@ public interface SensorDataRepository extends JpaRepository<SensorData, Long> {
 
     @Query(value = """
     SELECT\s
-        to_timestamp(floor((extract('epoch' from timestamp) / 900 )) * 900) AS timeBucket,
-        sensor_type AS sensorType,
-        AVG(current_value) AS averageValue
+        CAST(to_timestamp(floor((extract('epoch' from timestamp) / 900 )) * 900) AS TIMESTAMP) AS "timeBucket",
+        sensor_type AS "sensorType",
+        AVG(current_value) AS "averageValue"
     FROM sensor_readings
     WHERE turbine_id = :turbineId
       AND timestamp >= :startTime
       AND timestamp <= :endTime
-    GROUP BY timeBucket, sensor_type
-    ORDER BY timeBucket ASC
+    GROUP BY 1, sensor_type
+    ORDER BY 1 ASC
    \s""", nativeQuery = true)
     List<TurbineHistoryProjection> getAggregatedHistoryForTurbine(
             @Param("turbineId") String turbineId,
@@ -47,31 +47,65 @@ public interface SensorDataRepository extends JpaRepository<SensorData, Long> {
             @Param("endTime") LocalDateTime endTime);
 
     @Query(value = """
+    WITH TurbineBucketAverages AS (
+        SELECT\s
+            date_bin('15 minutes', timestamp, TIMESTAMP '2000-01-01') AS "timeBucket",
+            turbine_id,
+            sensor_type,
+            AVG(current_value) AS turbine_avg
+        FROM sensor_readings
+        WHERE park_id = :parkId
+          AND timestamp >= :startTime
+          AND timestamp <= :endTime
+        GROUP BY 1, turbine_id, sensor_type
+    )
     SELECT\s
-        to_timestamp(floor((extract('epoch' from timestamp) / 900 )) * 900) AS timeBucket,
-        'act_pwt' AS sensorType,
-        SUM(current_value) AS averageValue\s
-    FROM sensor_readings
-    WHERE sensor_type = 'act_pwt'
-      AND timestamp >= :startTime
-      AND timestamp <= :endTime
-    GROUP BY timeBucket
-    ORDER BY timeBucket ASC
+        "timeBucket",
+        sensor_type AS "sensorType",
+        AVG(turbine_avg) AS "averageValue"
+    FROM TurbineBucketAverages
+    GROUP BY "timeBucket", sensor_type
+    ORDER BY "timeBucket" ASC
+  \s""", nativeQuery = true)
+    List<TurbineHistoryProjection> getAggregatedHistoryForPark(
+            @Param("parkId") String parkId,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime);
+
+    @Query(value = """
+    WITH TurbineAverages AS (
+        SELECT\s
+            CAST(to_timestamp(floor((extract('epoch' from timestamp) / 900 )) * 900) AS TIMESTAMP) AS "timeBucket",
+            turbine_id,
+            AVG(current_value) AS avg_power
+        FROM sensor_readings
+        WHERE sensor_type = 'act_pwt'
+          AND timestamp >= :startTime
+          AND timestamp <= :endTime
+        GROUP BY 1, turbine_id
+    )
+    SELECT\s
+        "timeBucket",
+        'act_pwt' AS "sensorType",
+        SUM(avg_power) AS "averageValue"\s
+    FROM TurbineAverages
+    GROUP BY "timeBucket"
+    ORDER BY "timeBucket" ASC
   \s""", nativeQuery = true)
     List<TurbineHistoryProjection> getGlobalActivePowerHistory(
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime);
 
     @Query(value = """
-    SELECT 
-        turbine_id AS turbineId, 
-        AVG(current_value) AS averagePower 
-    FROM sensor_readings 
-    WHERE sensor_type = 'act_pwt' 
-      AND timestamp >= :startTime 
-      AND timestamp <= :endTime 
+    SELECT\s
+        turbine_id AS "turbineId",\s
+        AVG(current_value) AS "averagePower"\s
+    FROM sensor_readings\s
+    WHERE sensor_type = 'act_pwt'\s
+      AND timestamp >= :startTime\s
+      AND timestamp <= :endTime\s
     GROUP BY turbine_id
-    """, nativeQuery = true)
+   \s""", nativeQuery = true)
     List<TurbineAveragePower> getAveragePowerForAllTurbines(
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime);
