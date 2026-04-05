@@ -5,6 +5,7 @@ import ParkDashboard from './ParkDashboard' // Make sure you import your ParkDas
 import ReportExporter from './ReportExporter'
 import SignInModal from './SignInModal' 
 import CreateTenantModal from './CreateTenantModal'
+import FaultySensorsTerminal from './FaultySensorsTerminal'
 import './App.css'
 
 export const API_BASE_URL = 'http://10.200.22.157:6767/api/v1'
@@ -289,6 +290,14 @@ function App() {
           )}
         </div>
       </div>
+
+      <div className="main-grid" style={!user ? { gridTemplateColumns: '1fr 2fr' } : {}}>
+          {/* ... existing map and chart panels ... */}
+      </div>
+
+      {/* --- ADD THE NEW TERMINAL HERE --- */}
+      <FaultySensorsTerminal user={user} parks={parks} />
+
     </div>
   )
 }
