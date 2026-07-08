@@ -222,6 +222,6 @@ Update `API_BASE_URL` in `src/App.jsx` if the backend isn't running on the defau
 
 ## 10. Team
 
-**Team 05 — Hyped Coders**, PPC HackITall.
+**Team 05 — Art of Dying**, PPC HackITall.
 
 ![Team Hyped Coders](./images/irl.jfif)
